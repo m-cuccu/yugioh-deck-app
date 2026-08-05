@@ -7,6 +7,7 @@
   --border: #e5e4e7;
   --accent: #7c3aed;
   --accent-contrast: #ffffff;
+  --accent-bg: rgba(124, 58, 237, 0.12);
   --danger: #d64545;
   --ok: #2f9e58;
   --warn: #c98a1f;
@@ -30,6 +31,7 @@
     --border: #322f3a;
     --accent: #a879ff;
     --accent-contrast: #17141f;
+    --accent-bg: rgba(168, 121, 255, 0.18);
     --shadow: rgba(0, 0, 0, 0.35) 0 2px 8px;
   }
 }
@@ -307,12 +309,37 @@ button {
   gap: 8px;
 }
 
+.visibility-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
 .visibility-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.visibility-toggle.is-private {
+  background: var(--bg);
   color: var(--text-muted);
+}
+
+.visibility-toggle.is-public {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.visibility-toggle:disabled {
+  opacity: 0.6;
 }
 
 .deck-card-menu {

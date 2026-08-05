@@ -133,6 +133,12 @@ export default function DeckListPage() {
 
       {error && <p className="auth-error">{error}</p>}
 
+      {decks.length > 0 && (
+        <p className="visibility-hint">
+          🌐 Pubblico = visibile a chi cerca il tuo username nella pagina Amici. 🔒 Privato = visibile solo a te.
+        </p>
+      )}
+
       {decks.length === 0 ? (
         <p className="page-message">Non hai ancora nessun deck. Creane uno per iniziare!</p>
       ) : (
@@ -146,15 +152,19 @@ export default function DeckListPage() {
                 </span>
               </Link>
               <div className="deck-card-actions">
-                <label className="visibility-toggle">
-                  <input
-                    type="checkbox"
-                    checked={deck.is_public}
-                    disabled={busyId === deck.id}
-                    onChange={() => handleToggleVisibility(deck)}
-                  />
-                  {deck.is_public ? 'Pubblico' : 'Privato'}
-                </label>
+                <button
+                  type="button"
+                  className={`visibility-toggle ${deck.is_public ? 'is-public' : 'is-private'}`}
+                  onClick={() => handleToggleVisibility(deck)}
+                  disabled={busyId === deck.id}
+                  title={
+                    deck.is_public
+                      ? 'Visibile a chi cerca il tuo username. Clicca per renderlo privato.'
+                      : 'Visibile solo a te. Clicca per renderlo pubblico.'
+                  }
+                >
+                  {deck.is_public ? '🌐 Pubblico' : '🔒 Privato'}
+                </button>
                 <div className="deck-card-menu">
                   <button type="button" onClick={() => handleRename(deck)}>Rinomina</button>
                   <button type="button" onClick={() => handleDuplicate(deck)} disabled={busyId === deck.id}>
