@@ -682,11 +682,17 @@ export default function DeckEditorPage() {
             ) : (
               <ul className="related-cards-list">
                 {relatedOptions.map((card) => {
-                  const alreadyMax = (totalCopies.get(card.id) || 0) >= MAX_COPIES;
+                  const owned = totalCopies.get(card.id) || 0;
+                  const alreadyMax = owned >= MAX_COPIES;
                   return (
-                    <li key={card.id} className="related-card-item">
+                    <li key={card.id} className={`related-card-item ${owned > 0 ? 'is-owned' : ''}`}>
                       {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
-                      <span>{card.name}</span>
+                      <div className="related-card-text">
+                        <span className="related-card-name">{card.name}</span>
+                        <span className={`related-card-owned ${owned > 0 ? 'has-copies' : ''}`}>
+                          {owned > 0 ? `${owned}x nel deck` : 'non nel deck'}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         className="btn-primary"

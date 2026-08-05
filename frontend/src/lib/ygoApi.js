@@ -62,14 +62,25 @@ export async function fetchCardSets(cardName) {
   return card?.card_sets || [];
 }
 
-// Mappa il testo di rarita' (molto vario: "Ultra Rare", "Prismatic Secret Rare", "Ghost Rare", ecc.)
-// su una manciata di stili di bordo, per tenere la UI semplice senza dover elencare ogni singola rarita' ufficiale.
+// Mappa il testo di rarita' (molto vario: "Ultra Rare", "Prismatic Secret Rare", "Starlight Rare", ecc.)
+// sullo stile visivo corrispondente. L'ordine dei controlli conta: i nomi si sovrappongono
+// (es. "Prismatic Secret Rare" contiene "Secret Rare", "Gold Secret Rare" contiene sia "Gold" che "Secret"),
+// quindi si va dal piu' specifico al piu' generico.
 export function rarityToClass(rarityLabel) {
   const r = (rarityLabel || '').toLowerCase();
-  if (r.includes('starlight') || r.includes('prismatic') || r.includes('secret') || r.includes('quarter century')) {
-    return 'rarity-secret';
-  }
-  if (r.includes('ghost') || r.includes('platinum') || r.includes('collector')) return 'rarity-ghost';
+
+  if (r.includes('starlight')) return 'rarity-starlight';
+  if (r.includes("collector")) return 'rarity-collector';
+  if (r.includes('prismatic')) return 'rarity-prismatic';
+  if (r.includes('quarter century')) return 'rarity-quarter';
+  if (r.includes('platinum')) return 'rarity-platinum';
+  if (r.includes('gold')) return 'rarity-gold';
+  if (r.includes('ghost')) return 'rarity-ghost';
+  if (r.includes('starfoil')) return 'rarity-starfoil';
+  if (r.includes('shatterfoil')) return 'rarity-shatterfoil';
+  if (r.includes('mosaic')) return 'rarity-mosaic';
+  if (r.includes('parallel')) return 'rarity-parallel';
+  if (r.includes('secret')) return 'rarity-secret';
   if (r.includes('ultimate')) return 'rarity-ultimate';
   if (r.includes('ultra')) return 'rarity-ultra';
   if (r.includes('super')) return 'rarity-super';
