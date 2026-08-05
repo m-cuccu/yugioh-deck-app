@@ -36,3 +36,18 @@ export async function fetchCardArts(cardName) {
   const card = json.data?.[0];
   return card?.card_images || [];
 }
+
+// Carte "correlate": stesso archetipo della carta data (es. Dark Magician -> Dark Magician Girl, ecc.)
+export async function fetchRelatedCards(cardName) {
+  const infoRes = await fetch(`${BASE_URL}?name=${encodeURIComponent(cardName)}`);
+  if (!infoRes.ok) throw new Error('Impossibile recuperare la carta');
+  const infoJson = await infoRes.json();
+  const archetype = infoJson.data?.[0]?.archetype;
+  if (!archetype) return [];
+
+  const res = await fetch(`${BASE_URL}?archetype=${encodeURIComponent(archetype)}&num=25&offset=0`);
+  if (res.status === 400) return [];
+  if (!res.ok) throw new Error('Impossibile recuperare le carte correlate');
+  const json = await res.json();
+  return (json.data || []).filter((c) => c.name !== cardName);
+}

@@ -8,7 +8,7 @@ import {
   listSuggestions,
   saveDeckCards,
 } from '../lib/decksApi';
-import { cardThumbnail, fetchCardArts, isExtraDeckCard, searchCards } from '../lib/ygoApi';
+import { cardThumbnail, fetchCardArts, fetchRelatedCards, isExtraDeckCard, searchCards } from '../lib/ygoApi';
 
 const LIMITS = { main: [40, 60], extra: [0, 15], side: [0, 15] };
 const MAX_COPIES = 3;
@@ -51,6 +51,10 @@ export default function DeckEditorPage() {
   const [artPicker, setArtPicker] = useState(null); // { section, cardId, cardName }
   const [artOptions, setArtOptions] = useState([]);
   const [artLoading, setArtLoading] = useState(false);
+
+  const [relatedPicker, setRelatedPicker] = useState(null); // { cardName }
+  const [relatedOptions, setRelatedOptions] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   const readOnly = deck ? deck.user_id !== user.id : false;
 
@@ -206,6 +210,22 @@ export default function DeckEditorPage() {
     }));
     setDirty(true);
     closeArtPicker();
+  }
+
+  function openRelatedPicker(card) {
+    if (readOnly) return;
+    setRelatedPicker({ cardName: card.card_name });
+    setRelatedOptions([]);
+    setRelatedLoading(true);
+    fetchRelatedCards(card.card_name)
+      .then((related) => setRelatedOptions(related))
+      .catch((err) => setError(err.message))
+      .finally(() => setRelatedLoading(false));
+  }
+
+  function closeRelatedPicker() {
+    setRelatedPicker(null);
+    setRelatedOptions([]);
   }
 
   async function handleSave() {
@@ -411,6 +431,15 @@ export default function DeckEditorPage() {
                         </select>
                       </div>
                     )}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="related-cards-trigger"
+                        onClick={() => openRelatedPicker(c)}
+                      >
+                        Carte correlate
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -553,6 +582,42 @@ export default function DeckEditorPage() {
                     </button>
                   </li>
                 ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {relatedPicker && (
+        <div className="art-picker-overlay" onClick={closeRelatedPicker}>
+          <div className="art-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="art-picker-header">
+              <h3>Carte correlate a {relatedPicker.cardName}</h3>
+              <button className="btn-link" onClick={closeRelatedPicker} type="button">Chiudi</button>
+            </div>
+            {relatedLoading ? (
+              <p className="page-message">Ricerca carte correlate...</p>
+            ) : relatedOptions.length === 0 ? (
+              <p className="page-message">Nessuna carta correlata trovata per questo archetipo.</p>
+            ) : (
+              <ul className="related-cards-list">
+                {relatedOptions.map((card) => {
+                  const alreadyMax = (totalCopies.get(card.id) || 0) >= MAX_COPIES;
+                  return (
+                    <li key={card.id} className="related-card-item">
+                      {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
+                      <span>{card.name}</span>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => addCard(card)}
+                        disabled={alreadyMax}
+                      >
+                        {alreadyMax ? 'Max 3' : '+ Aggiungi'}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
