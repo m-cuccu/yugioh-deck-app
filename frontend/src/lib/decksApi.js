@@ -72,6 +72,7 @@ export async function duplicateDeck(userId, deckId) {
       card_image: c.card_image,
       section,
       quantity: c.quantity,
+      rarity_label: c.rarity_label,
     }))
   );
 
@@ -96,6 +97,7 @@ export async function saveDeckCards(deckId, cardsBySection) {
       card_image: c.card_image,
       section,
       quantity: c.quantity,
+      rarity_label: c.rarity_label || null,
     }))
   );
 

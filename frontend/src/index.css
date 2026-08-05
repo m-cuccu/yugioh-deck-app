@@ -551,6 +551,257 @@ button {
   white-space: nowrap;
 }
 
+/* --- Rarity "foil" effect on the card image + name (real foil scans aren't available from the
+   free card API, so this approximates each rarity's real-world signature look):
+   Common     -> nothing
+   Rare       -> only the name is "foil" (shiny animated silver text), artwork plain
+   Super Rare -> only the artwork is foil (gold shimmer sweep), name plain
+   Ultra Rare -> both artwork (gold shimmer) and name (gold shiny text) are foil
+   Ultimate   -> embossed/engraved look (3D bevel) with a slow gold shimmer
+   Ghost Rare -> soft pulsing spectral glow, no sweep
+   Secret     -> rainbow diagonal stripe holo pattern, animated */
+
+.card-art-wrap {
+  position: relative;
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.card-art-wrap.rarity-rare {
+  animation: rare-pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes rare-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #c7ccd6, 0 2px 5px rgba(0, 0, 0, 0.3); }
+  50% { box-shadow: 0 0 0 3px #eef0f4, 0 0 8px rgba(199, 204, 214, 0.55); }
+}
+
+.card-art-wrap.rarity-super {
+  animation: super-pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes super-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #e6c65c, 0 2px 5px rgba(0, 0, 0, 0.3); }
+  50% { box-shadow: 0 0 0 3px #f3d879, 0 0 10px rgba(230, 198, 92, 0.55); }
+}
+
+.card-art-wrap.rarity-ultra {
+  animation: ultra-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ultra-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #ffd873, 0 0 12px rgba(255, 209, 102, 0.55); }
+  50% { box-shadow: 0 0 0 3px #ffe9a8, 0 0 20px rgba(255, 209, 102, 0.85); }
+}
+
+.card-art-wrap.rarity-ultimate {
+  animation: ultimate-pulse 4s ease-in-out infinite;
+}
+
+@keyframes ultimate-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px #f0c419,
+      inset 2px 2px 4px rgba(255, 255, 255, 0.75),
+      inset -2px -2px 4px rgba(120, 80, 0, 0.5),
+      0 0 14px rgba(240, 196, 25, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px #ffe066,
+      inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+      inset -2px -2px 4px rgba(120, 80, 0, 0.6),
+      0 0 22px rgba(240, 196, 25, 0.65);
+  }
+}
+
+.card-art-wrap.rarity-ghost {
+  box-shadow: 0 0 0 3px #eef0f5, 0 0 10px rgba(255, 255, 255, 0.5);
+  animation: ghost-pulse 2.6s ease-in-out infinite;
+}
+
+.card-art-wrap.rarity-ghost img {
+  filter: saturate(0.3) brightness(1.2) contrast(1.05);
+}
+
+@keyframes ghost-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #eef0f5, 0 0 8px rgba(255, 255, 255, 0.35); }
+  50% { box-shadow: 0 0 0 3px #ffffff, 0 0 20px rgba(255, 255, 255, 0.85); }
+}
+
+.card-art-wrap.rarity-secret {
+  animation: secret-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes secret-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #cfcfd6, 0 0 8px rgba(200, 200, 220, 0.4); }
+  50% { box-shadow: 0 0 0 3px #f0f0f6, 0 0 16px rgba(200, 200, 220, 0.8); }
+}
+
+/* shimmer sweep: artwork-foil rarities (super, ultra, ultimate use a gold sheen; ghost uses a silvery-white one) */
+.card-art-wrap.rarity-super::after,
+.card-art-wrap.rarity-ultra::after,
+.card-art-wrap.rarity-ultimate::after,
+.card-art-wrap.rarity-ghost::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 241, 194, 0.7) 50%, transparent 70%);
+  background-size: 250% 250%;
+  background-position: 200% 200%;
+  animation: shimmer-sweep 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.card-art-wrap.rarity-ultimate::after {
+  animation-duration: 5.5s;
+}
+
+.card-art-wrap.rarity-ghost::after {
+  background: linear-gradient(115deg, transparent 25%, rgba(255, 255, 255, 0.85) 50%, transparent 75%);
+  animation-duration: 2.6s;
+}
+
+@keyframes shimmer-sweep {
+  0% { background-position: 200% 200%; }
+  60%, 100% { background-position: -60% -60%; }
+}
+
+/* secret rare: diagonal rainbow holo stripes instead of a plain sweep */
+.card-art-wrap.rarity-secret::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(255, 107, 107, 0.55) 0%,
+    rgba(254, 202, 87, 0.55) 8%,
+    rgba(72, 219, 251, 0.55) 16%,
+    rgba(255, 159, 243, 0.55) 24%,
+    rgba(84, 160, 255, 0.55) 32%
+  );
+  background-size: 220% 220%;
+  animation: secret-holo-shift 5s linear infinite;
+  mix-blend-mode: color-dodge;
+  pointer-events: none;
+}
+
+@keyframes secret-holo-shift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Card name "foil" text: Rare (silver) and Ultra (gold) */
+.deck-card-tile-name.name-rarity-rare,
+.deck-card-tile-name.name-rarity-ultra {
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: name-shine 3s linear infinite;
+  font-weight: 700;
+}
+
+.deck-card-tile-name.name-rarity-rare {
+  background-image: linear-gradient(90deg, #9aa0ad 0%, #ffffff 25%, #9aa0ad 50%, #ffffff 75%, #9aa0ad 100%);
+}
+
+.deck-card-tile-name.name-rarity-ultra {
+  background-image: linear-gradient(90deg, #b8860b 0%, #ffe9a8 25%, #b8860b 50%, #ffe9a8 75%, #b8860b 100%);
+}
+
+@keyframes name-shine {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.rarity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rarity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.rarity-item.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.rarity-current {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.rarity-current-none {
+  color: var(--text-muted);
+}
+
+.deck-card-tile-rarity {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rarity-swatch {
+  width: 20px;
+  height: 28px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.rarity-swatch.rarity-common { background: var(--bg); }
+.rarity-swatch.rarity-rare { background: #b9c1cc; }
+.rarity-swatch.rarity-super { background: #d4af37; }
+.rarity-swatch.rarity-ultra { background: #ffcf40; }
+.rarity-swatch.rarity-ultimate { background: #e8b923; }
+.rarity-swatch.rarity-ghost { background: linear-gradient(135deg, #e8e8e8, #ffffff, #b8b8c0); }
+.rarity-swatch.rarity-secret { background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff); }
+
+.rarity-item-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rarity-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.rarity-set {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rarity-item button {
+  font-size: 12px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
 /* --- Art picker --- */
 
 .art-picker-trigger {

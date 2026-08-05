@@ -8,7 +8,15 @@ import {
   listSuggestions,
   saveDeckCards,
 } from '../lib/decksApi';
-import { cardThumbnail, fetchCardArts, fetchRelatedCards, isExtraDeckCard, searchCards } from '../lib/ygoApi';
+import {
+  cardThumbnail,
+  fetchCardArts,
+  fetchCardSets,
+  fetchRelatedCards,
+  isExtraDeckCard,
+  rarityToClass,
+  searchCards,
+} from '../lib/ygoApi';
 
 const LIMITS = { main: [40, 60], extra: [0, 15], side: [0, 15] };
 const MAX_COPIES = 3;
@@ -19,6 +27,7 @@ function toEditable(card) {
     card_name: card.card_name,
     card_image: card.card_image,
     quantity: card.quantity,
+    rarity_label: card.rarity_label || null,
   };
 }
 
@@ -55,6 +64,10 @@ export default function DeckEditorPage() {
   const [relatedPicker, setRelatedPicker] = useState(null); // { cardName }
   const [relatedOptions, setRelatedOptions] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+
+  const [rarityPicker, setRarityPicker] = useState(null); // { section, cardId, cardName }
+  const [rarityOptions, setRarityOptions] = useState([]);
+  const [rarityLoading, setRarityLoading] = useState(false);
 
   const readOnly = deck ? deck.user_id !== user.id : false;
 
@@ -151,7 +164,10 @@ export default function DeckEditorPage() {
       const existing = list.find((c) => c.card_id === card.id);
       const next = existing
         ? list.map((c) => (c.card_id === card.id ? { ...c, quantity: c.quantity + 1 } : c))
-        : [...list, { card_id: card.id, card_name: card.name, card_image: cardThumbnail(card), quantity: 1 }];
+        : [
+            ...list,
+            { card_id: card.id, card_name: card.name, card_image: cardThumbnail(card), quantity: 1, rarity_label: null },
+          ];
       return { ...prev, [section]: next };
     });
     setDirty(true);
@@ -226,6 +242,50 @@ export default function DeckEditorPage() {
   function closeRelatedPicker() {
     setRelatedPicker(null);
     setRelatedOptions([]);
+  }
+
+  function openRarityPicker(section, card) {
+    if (readOnly) return;
+    setRarityPicker({
+      section,
+      cardId: card.card_id,
+      cardName: card.card_name,
+      currentLabel: card.rarity_label || null,
+    });
+    setRarityOptions([]);
+    setRarityLoading(true);
+    fetchCardSets(card.card_name)
+      .then((sets) => setRarityOptions(sets))
+      .catch((err) => setError(err.message))
+      .finally(() => setRarityLoading(false));
+  }
+
+  function closeRarityPicker() {
+    setRarityPicker(null);
+    setRarityOptions([]);
+  }
+
+  function chooseRarity(set) {
+    if (!rarityPicker) return;
+    const { section, cardId } = rarityPicker;
+    const label = `${set.set_rarity} · ${set.set_name}`;
+    setCards((prev) => ({
+      ...prev,
+      [section]: prev[section].map((c) => (c.card_id === cardId ? { ...c, rarity_label: label } : c)),
+    }));
+    setDirty(true);
+    closeRarityPicker();
+  }
+
+  function clearRarity() {
+    if (!rarityPicker) return;
+    const { section, cardId } = rarityPicker;
+    setCards((prev) => ({
+      ...prev,
+      [section]: prev[section].map((c) => (c.card_id === cardId ? { ...c, rarity_label: null } : c)),
+    }));
+    setDirty(true);
+    closeRarityPicker();
   }
 
   async function handleSave() {
@@ -306,6 +366,7 @@ export default function DeckEditorPage() {
             card_name: suggestion.suggested_card_name,
             card_image: suggestion.suggested_card_image,
             quantity: 1,
+            rarity_label: null,
           },
         ];
 
@@ -393,23 +454,32 @@ export default function DeckEditorPage() {
               <p className="page-message">Nessuna carta.</p>
             ) : (
               <ul className="deck-card-grid">
-                {cards[section].map((c) => (
+                {cards[section].map((c) => {
+                  const rarityClass = c.rarity_label ? rarityToClass(c.rarity_label) : '';
+                  return (
                   <li key={c.card_id} className="deck-card-tile">
                     {c.card_image && (
                       readOnly ? (
-                        <img src={c.card_image} alt={c.card_name} loading="lazy" />
+                        <span className={`card-art-wrap ${rarityClass}`} title={c.rarity_label || undefined}>
+                          <img src={c.card_image} alt={c.card_name} loading="lazy" />
+                        </span>
                       ) : (
                         <button
                           type="button"
                           className="art-picker-trigger"
                           onClick={() => openArtPicker(section, c)}
-                          title="Cambia art"
+                          title={c.rarity_label || 'Cambia art'}
                         >
-                          <img src={c.card_image} alt={c.card_name} loading="lazy" />
+                          <span className={`card-art-wrap ${rarityClass}`}>
+                            <img src={c.card_image} alt={c.card_name} loading="lazy" />
+                          </span>
                         </button>
                       )
                     )}
-                    <span className="deck-card-tile-name">{c.card_name}</span>
+                    <span className={`deck-card-tile-name ${rarityClass ? `name-${rarityClass}` : ''}`}>
+                      {c.card_name}
+                    </span>
+                    {c.rarity_label && <span className="deck-card-tile-rarity">{c.rarity_label}</span>}
                     {!readOnly && (
                       <div className="deck-card-tile-controls">
                         <button type="button" onClick={() => changeQuantity(section, c.card_id, -1)}>-</button>
@@ -440,8 +510,18 @@ export default function DeckEditorPage() {
                         Carte correlate
                       </button>
                     )}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="related-cards-trigger"
+                        onClick={() => openRarityPicker(section, c)}
+                      >
+                        Rarità{c.rarity_label ? ' ✓' : ''}
+                      </button>
+                    )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -614,6 +694,53 @@ export default function DeckEditorPage() {
                         disabled={alreadyMax}
                       >
                         {alreadyMax ? 'Max 3' : '+ Aggiungi'}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {rarityPicker && (
+        <div className="art-picker-overlay" onClick={closeRarityPicker}>
+          <div className="art-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="art-picker-header">
+              <h3>Scegli l'edizione di {rarityPicker.cardName}</h3>
+              <button className="btn-link" onClick={closeRarityPicker} type="button">Chiudi</button>
+            </div>
+            {rarityPicker.currentLabel ? (
+              <p className="rarity-current">
+                Attuale: <strong>{rarityPicker.currentLabel}</strong>{' '}
+                <button className="btn-link" onClick={clearRarity} type="button">Rimuovi</button>
+              </p>
+            ) : (
+              <p className="rarity-current rarity-current-none">Nessuna edizione scelta (carta comune)</p>
+            )}
+            {rarityLoading ? (
+              <p className="page-message">Caricamento edizioni...</p>
+            ) : rarityOptions.length === 0 ? (
+              <p className="page-message">Nessuna edizione trovata per questa carta.</p>
+            ) : (
+              <ul className="rarity-list">
+                {rarityOptions.map((set, i) => {
+                  const label = `${set.set_rarity} · ${set.set_name}`;
+                  const isSelected = label === rarityPicker.currentLabel;
+                  return (
+                    <li key={`${set.set_code}-${i}`} className={`rarity-item ${isSelected ? 'is-selected' : ''}`}>
+                      <span className={`rarity-swatch ${rarityToClass(set.set_rarity)}`} />
+                      <div className="rarity-item-text">
+                        <span className="rarity-name">{set.set_rarity}</span>
+                        <span className="rarity-set">{set.set_name} ({set.set_code})</span>
+                      </div>
+                      <button
+                        className={isSelected ? 'btn-secondary' : 'btn-primary'}
+                        onClick={() => chooseRarity(set)}
+                        type="button"
+                      >
+                        {isSelected ? '✓ Scelta' : 'Scegli'}
                       </button>
                     </li>
                   );

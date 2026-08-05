@@ -98,7 +98,8 @@ create table if not exists deck_cards (
   card_name text not null,
   card_image text,
   section text not null check (section in ('main', 'extra', 'side')),
-  quantity integer not null default 1 check (quantity > 0)
+  quantity integer not null default 1 check (quantity > 0),
+  rarity_label text
 );
 
 create index if not exists idx_deck_cards_deck_id on deck_cards(deck_id);
@@ -205,3 +206,6 @@ create policy "Autore o proprietario del deck eliminano il suggerimento"
         and decks.user_id = auth.uid()
     )
   );
+
+-- 6. Rarita' scelta per ogni carta del deck (es. "Ultra Rare - Battle of Chaos")
+alter table deck_cards add column if not exists rarity_label text;
