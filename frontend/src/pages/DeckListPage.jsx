@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   createDeck,
   deleteDeck,
@@ -15,6 +16,7 @@ import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } fr
 
 export default function DeckListPage() {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,7 +99,7 @@ export default function DeckListPage() {
       const content = await file.text();
       const baseName = file.name.replace(/\.(json|ydk)$/i, '');
       const parsed = file.name.endsWith('.ydk')
-        ? await parseYdkFile(content, baseName)
+        ? await parseYdkFile(content, baseName, lang)
         : parseJsonDeckFile(content);
 
       const deck = await createDeck(user.id, parsed.name || baseName);

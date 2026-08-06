@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   createSuggestion,
   deleteSuggestion,
@@ -12,6 +13,7 @@ import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
 import {
   cardThumbnail,
   fetchCardArts,
+  fetchCardNamesByIds,
   fetchCardSets,
   fetchRelatedCards,
   isExtraDeckCard,
@@ -35,6 +37,7 @@ function toEditable(card) {
 export default function DeckEditorPage() {
   const { deckId } = useParams();
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const navigate = useNavigate();
 
   const [deck, setDeck] = useState(null);
@@ -91,6 +94,43 @@ export default function DeckEditorPage() {
     return () => { cancelled = true; };
   }, [deckId]);
 
+  // Chiave stabile con gli id presenti nel deck: cambia solo quando cambia l'insieme delle
+  // carte, non a ogni modifica di quantita' o di nome (che l'effetto qui sotto riscrive).
+  const cardIdsKey = useMemo(
+    () =>
+      [...cards.main, ...cards.extra, ...cards.side]
+        .map((c) => c.card_id)
+        .sort((a, b) => a - b)
+        .join(','),
+    [cards]
+  );
+
+  // I nomi salvati in deck_cards sono l'istantanea di quando la carta e' stata aggiunta:
+  // qui li riallineiamo alla lingua scelta (solo per la visualizzazione, senza toccare il deck).
+  useEffect(() => {
+    if (!cardIdsKey) return;
+    const ids = cardIdsKey.split(',').map(Number);
+
+    let cancelled = false;
+    fetchCardNamesByIds(ids, lang).then((names) => {
+      if (cancelled || names.size === 0) return;
+      setCards((prev) => {
+        let changed = false;
+        const next = {};
+        for (const section of ['main', 'extra', 'side']) {
+          next[section] = prev[section].map((c) => {
+            const translated = names.get(c.card_id);
+            if (!translated || translated === c.card_name) return c;
+            changed = true;
+            return { ...c, card_name: translated };
+          });
+        }
+        return changed ? next : prev;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [cardIdsKey, lang]);
+
   function reloadSuggestions() {
     setSuggestionsLoading(true);
     return listSuggestions(deckId)
@@ -112,13 +152,13 @@ export default function DeckEditorPage() {
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(() => {
-      searchCards(query)
+      searchCards(query, lang)
         .then((data) => { if (!cancelled) setResults(data.slice(0, 25)); })
         .catch(() => { if (!cancelled) setResults([]); })
         .finally(() => { if (!cancelled) setSearching(false); });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query]);
+  }, [query, lang]);
 
   useEffect(() => {
     if (!suggestQuery.trim()) {
@@ -128,13 +168,13 @@ export default function DeckEditorPage() {
     let cancelled = false;
     setSuggestSearching(true);
     const timer = setTimeout(() => {
-      searchCards(suggestQuery)
+      searchCards(suggestQuery, lang)
         .then((data) => { if (!cancelled) setSuggestResults(data.slice(0, 25)); })
         .catch(() => { if (!cancelled) setSuggestResults([]); })
         .finally(() => { if (!cancelled) setSuggestSearching(false); });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [suggestQuery]);
+  }, [suggestQuery, lang]);
 
   const totalCopies = useMemo(() => {
     const map = new Map();
@@ -208,7 +248,7 @@ export default function DeckEditorPage() {
     setArtPicker({ section, cardId: card.card_id, cardName: card.card_name });
     setArtOptions([]);
     setArtLoading(true);
-    fetchCardArts(card.card_name)
+    fetchCardArts(card.card_name, lang)
       .then((arts) => setArtOptions(arts))
       .catch((err) => setError(err.message))
       .finally(() => setArtLoading(false));
@@ -235,7 +275,7 @@ export default function DeckEditorPage() {
     setRelatedPicker({ cardName: card.card_name });
     setRelatedOptions([]);
     setRelatedLoading(true);
-    fetchRelatedCards(card.card_name)
+    fetchRelatedCards(card.card_name, lang)
       .then((related) => setRelatedOptions(related))
       .catch((err) => setError(err.message))
       .finally(() => setRelatedLoading(false));
@@ -256,7 +296,7 @@ export default function DeckEditorPage() {
     });
     setRarityOptions([]);
     setRarityLoading(true);
-    fetchCardSets(card.card_name)
+    fetchCardSets(card.card_name, lang)
       .then((sets) => setRarityOptions(sets))
       .catch((err) => setError(err.message))
       .finally(() => setRarityLoading(false));

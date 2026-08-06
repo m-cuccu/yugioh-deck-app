@@ -69,13 +69,14 @@ function parseYdkIds(content) {
   return sections;
 }
 
-export async function parseYdkFile(content, deckName) {
+export async function parseYdkFile(content, deckName, lang) {
   const idsBySection = parseYdkIds(content);
   const allIds = [...new Set([...idsBySection.main, ...idsBySection.extra, ...idsBySection.side])];
 
   const cardMap = new Map();
   if (allIds.length > 0) {
-    const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${allIds.join(',')}`;
+    const langSuffix = lang && lang !== 'en' ? `&language=${encodeURIComponent(lang)}` : '';
+    const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${allIds.join(',')}${langSuffix}`;
     const res = await fetch(url);
     if (res.ok) {
       const json = await res.json();

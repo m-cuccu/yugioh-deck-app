@@ -117,6 +117,27 @@ button {
   font-size: 14px;
 }
 
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.lang-switch button {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.lang-switch button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 .app-main {
   flex: 1;
   width: 100%;
