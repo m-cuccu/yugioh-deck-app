@@ -1463,6 +1463,162 @@ button {
   color: var(--accent);
 }
 
+.suggestion-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.suggestion-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.suggestion-status.status-accepted {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.suggestion-status.status-rejected {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.suggestion-response {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text);
+  border-left: 3px solid var(--border);
+  padding-left: 8px;
+}
+
+.suggestion-deck {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.suggestion-reject-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.suggestion-reject-form input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.suggestion-reject-form button {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.nav-badge {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+
+.deck-card-suggest-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* --- Storico versioni --- */
+
+.history-section {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.history-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.history-header h3 {
+  margin: 0;
+}
+
+.version-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.version-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.version-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.version-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.version-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.version-item button {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
 .suggestion-author {
   font-weight: 600;
   color: var(--text-h);

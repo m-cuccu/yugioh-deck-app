@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DeckListPage from './pages/DeckListPage';
 import DeckEditorPage from './pages/DeckEditorPage';
 import FriendsPage from './pages/FriendsPage';
+import SuggestionsPage from './pages/SuggestionsPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -20,6 +21,7 @@ function App() {
         <Routes>
           <Route path="/" element={<DeckListPage />} />
           <Route path="/deck/:deckId" element={<DeckEditorPage />} />
+          <Route path="/suggerimenti" element={<SuggestionsPage />} />
           <Route path="/amici" element={<FriendsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -11,11 +11,16 @@ function countBySection(cards) {
 export async function listMyDecks(userId) {
   const { data, error } = await supabase
     .from('decks')
-    .select('*, deck_cards(section, quantity)')
+    .select('*, deck_cards(section, quantity), card_suggestions(id, status)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return data.map((d) => ({ ...d, counts: countBySection(d.deck_cards) }));
+  return data.map((d) => ({
+    ...d,
+    counts: countBySection(d.deck_cards),
+    pendingSuggestions: (d.card_suggestions || []).filter((s) => (s.status || 'pending') === 'pending')
+      .length,
+  }));
 }
 
 export async function getDeck(deckId) {
@@ -173,4 +178,104 @@ export async function createSuggestion(deckId, authorId, payload) {
 export async function deleteSuggestion(suggestionId) {
   const { error } = await supabase.from('card_suggestions').delete().eq('id', suggestionId);
   if (error) throw error;
+}
+
+// Il proprietario risponde: il suggerimento resta in archivio con l'esito,
+// cosi' chi l'ha inviato capisce com'e' andata.
+export async function respondToSuggestion(suggestionId, status, responseComment) {
+  const { error } = await supabase
+    .from('card_suggestions')
+    .update({
+      status,
+      response_comment: responseComment?.trim() || null,
+      responded_at: new Date().toISOString(),
+      seen_by_owner: true,
+    })
+    .eq('id', suggestionId);
+  if (error) throw error;
+}
+
+// Tutti i suggerimenti ricevuti sui deck dell'utente (per la pagina dedicata)
+export async function listIncomingSuggestions(userId) {
+  const { data, error } = await supabase
+    .from('card_suggestions')
+    .select('*, profiles(username), decks!inner(id, name, user_id)')
+    .eq('decks.user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Suggerimenti inviati dall'utente ad altri, con il relativo esito
+export async function listSentSuggestions(userId) {
+  const { data, error } = await supabase
+    .from('card_suggestions')
+    .select('*, decks(id, name)')
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function countUnreadSuggestions(userId) {
+  const { count, error } = await supabase
+    .from('card_suggestions')
+    .select('id, decks!inner(user_id)', { count: 'exact', head: true })
+    .eq('decks.user_id', userId)
+    .eq('status', 'pending')
+    .eq('seen_by_owner', false);
+  if (error) throw error;
+  return count || 0;
+}
+
+export async function markSuggestionsSeen(suggestionIds) {
+  if (!suggestionIds || suggestionIds.length === 0) return;
+  const { error } = await supabase
+    .from('card_suggestions')
+    .update({ seen_by_owner: true })
+    .in('id', suggestionIds);
+  if (error) throw error;
+}
+
+const MAX_VERSIONS_PER_DECK = 20;
+
+// Snapshot della composizione del deck. Ne teniamo solo gli ultimi MAX_VERSIONS_PER_DECK
+// per deck, altrimenti lo storico crescerebbe all'infinito.
+export async function createDeckVersion(deckId, cardsBySection, label) {
+  const snapshot = {};
+  for (const section of SECTIONS) {
+    snapshot[section] = (cardsBySection[section] || []).map((c) => ({
+      card_id: c.card_id,
+      card_name: c.card_name,
+      card_image: c.card_image ?? null,
+      quantity: c.quantity,
+      rarity_label: c.rarity_label ?? null,
+    }));
+  }
+
+  const { error } = await supabase
+    .from('deck_versions')
+    .insert({ deck_id: deckId, label: label || null, cards: snapshot });
+  if (error) throw error;
+
+  const { data: older } = await supabase
+    .from('deck_versions')
+    .select('created_at')
+    .eq('deck_id', deckId)
+    .order('created_at', { ascending: false })
+    .range(MAX_VERSIONS_PER_DECK, MAX_VERSIONS_PER_DECK);
+
+  if (older && older.length > 0) {
+    await supabase.from('deck_versions').delete().eq('deck_id', deckId).lte('created_at', older[0].created_at);
+  }
+}
+
+export async function listDeckVersions(deckId) {
+  const { data, error } = await supabase
+    .from('deck_versions')
+    .select('*')
+    .eq('deck_id', deckId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
 }

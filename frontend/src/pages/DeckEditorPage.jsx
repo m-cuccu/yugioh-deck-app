@@ -2,13 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationsContext';
 import {
+  createDeckVersion,
   createSuggestion,
   deleteSuggestion,
   getDeck,
+  listDeckVersions,
   listSuggestions,
+  respondToSuggestion,
   saveDeckCards,
 } from '../lib/decksApi';
+import { applySuggestionToCards, MAX_COPIES, sectionLabel } from '../lib/suggestions';
+import SuggestionCard from '../components/SuggestionCard';
 import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
 import {
   cardThumbnail,
@@ -22,7 +28,6 @@ import {
 } from '../lib/ygoApi';
 
 const LIMITS = { main: [40, 60], extra: [0, 15], side: [0, 15] };
-const MAX_COPIES = 3;
 
 function toEditable(card) {
   return {
@@ -38,6 +43,7 @@ export default function DeckEditorPage() {
   const { deckId } = useParams();
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const { refreshUnread } = useNotifications();
   const navigate = useNavigate();
 
   const [deck, setDeck] = useState(null);
@@ -73,6 +79,12 @@ export default function DeckEditorPage() {
   const [rarityPicker, setRarityPicker] = useState(null); // { section, cardId, cardName }
   const [rarityOptions, setRarityOptions] = useState([]);
   const [rarityLoading, setRarityLoading] = useState(false);
+
+  const [respondingId, setRespondingId] = useState(null); // suggerimento a cui si sta rispondendo
+  const [responseComment, setResponseComment] = useState('');
+  const [versions, setVersions] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
 
   const readOnly = deck ? deck.user_id !== user.id : false;
 
@@ -139,8 +151,15 @@ export default function DeckEditorPage() {
       .finally(() => setSuggestionsLoading(false));
   }
 
+  function reloadVersions() {
+    return listDeckVersions(deckId)
+      .then((data) => setVersions(data))
+      .catch(() => setVersions([]));
+  }
+
   useEffect(() => {
     reloadSuggestions();
+    reloadVersions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckId]);
 
@@ -343,6 +362,9 @@ export default function DeckEditorPage() {
     try {
       await saveDeckCards(deckId, cards);
       setDirty(false);
+      // snapshot dopo il salvataggio, cosi' lo storico riflette le versioni effettive
+      await createDeckVersion(deckId, cards, 'Salvataggio');
+      await reloadVersions();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -393,57 +415,9 @@ export default function DeckEditorPage() {
     }
   }
 
-  function applySuggestionToCards(suggestion) {
-    const kind = suggestion.kind || 'replace';
-    const section = suggestion.target_section;
-    const list = cards[section] || [];
-
-    if (kind === 'remove') {
-      if (!list.some((c) => c.card_id === suggestion.target_card_id)) {
-        return { error: 'La carta da rimuovere non è più nel deck.' };
-      }
-      const nextList = list
-        .map((c) => (c.card_id === suggestion.target_card_id ? { ...c, quantity: c.quantity - 1 } : c))
-        .filter((c) => c.quantity > 0);
-      return { nextCards: { ...cards, [section]: nextList } };
-    }
-
-    if ((totalCopies.get(suggestion.suggested_card_id) || 0) >= MAX_COPIES) {
-      return { error: `"${suggestion.suggested_card_name}" ha già ${MAX_COPIES} copie nel deck, impossibile applicare.` };
-    }
-
-    let baseList = list;
-    if (kind === 'replace') {
-      if (!list.some((c) => c.card_id === suggestion.target_card_id)) {
-        return { error: 'La carta da sostituire non è più nel deck.' };
-      }
-      baseList = list
-        .map((c) => (c.card_id === suggestion.target_card_id ? { ...c, quantity: c.quantity - 1 } : c))
-        .filter((c) => c.quantity > 0);
-    }
-
-    const existing = baseList.find((c) => c.card_id === suggestion.suggested_card_id);
-    const nextList = existing
-      ? baseList.map((c) =>
-          c.card_id === suggestion.suggested_card_id ? { ...c, quantity: c.quantity + 1 } : c
-        )
-      : [
-          ...baseList,
-          {
-            card_id: suggestion.suggested_card_id,
-            card_name: suggestion.suggested_card_name,
-            card_image: suggestion.suggested_card_image,
-            quantity: 1,
-            rarity_label: null,
-          },
-        ];
-
-    return { nextCards: { ...cards, [section]: nextList } };
-  }
-
   async function handleAccept(suggestion) {
     setError('');
-    const { nextCards, error: applyError } = applySuggestionToCards(suggestion);
+    const { nextCards, error: applyError } = applySuggestionToCards(cards, suggestion);
     if (applyError) {
       setError(applyError);
       return;
@@ -451,10 +425,15 @@ export default function DeckEditorPage() {
 
     setSuggestBusy(true);
     try {
+      await createDeckVersion(deckId, cards, 'Prima di applicare un suggerimento');
       await saveDeckCards(deckId, nextCards);
       setCards(nextCards);
-      await deleteSuggestion(suggestion.id);
-      setSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
+      await respondToSuggestion(suggestion.id, 'accepted', responseComment);
+      setRespondingId(null);
+      setResponseComment('');
+      await reloadSuggestions();
+      await reloadVersions();
+      refreshUnread();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -462,7 +441,24 @@ export default function DeckEditorPage() {
     }
   }
 
-  async function handleDismiss(suggestion) {
+  async function handleReject(suggestion) {
+    setSuggestBusy(true);
+    setError('');
+    try {
+      await respondToSuggestion(suggestion.id, 'rejected', responseComment);
+      setRespondingId(null);
+      setResponseComment('');
+      await reloadSuggestions();
+      refreshUnread();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSuggestBusy(false);
+    }
+  }
+
+  // l'autore puo' ritirare un suggerimento ancora in attesa
+  async function handleWithdraw(suggestion) {
     setSuggestBusy(true);
     setError('');
     try {
@@ -472,6 +468,30 @@ export default function DeckEditorPage() {
       setError(err.message);
     } finally {
       setSuggestBusy(false);
+    }
+  }
+
+  async function handleRestoreVersion(version) {
+    if (!window.confirm('Ripristinare questa versione del deck? Lo stato attuale viene salvato nello storico.')) {
+      return;
+    }
+    setRestoringId(version.id);
+    setError('');
+    try {
+      const restored = {
+        main: version.cards.main || [],
+        extra: version.cards.extra || [],
+        side: version.cards.side || [],
+      };
+      await createDeckVersion(deckId, cards, 'Prima di un ripristino');
+      await saveDeckCards(deckId, restored);
+      setCards(restored);
+      setDirty(false);
+      await reloadVersions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRestoringId(null);
     }
   }
 
@@ -723,63 +743,129 @@ export default function DeckEditorPage() {
           <p className="page-message">Nessun suggerimento ancora.</p>
         ) : (
           <ul className="suggestion-list">
-            {suggestions.map((s) => (
-              <li key={s.id} className="suggestion-item">
-                <div>
-                  <span className={`suggestion-kind kind-${s.kind || 'replace'}`}>
-                    {suggestionKindLabel(s.kind)}
-                  </span>{' '}
-                  <span className="suggestion-author">{s.profiles?.username || 'Un utente'}</span>{' '}
-                  {(s.kind || 'replace') === 'replace' && (
-                    <>
-                      propone <strong>{s.suggested_card_name}</strong> al posto di{' '}
-                      <strong>{s.target_card_name}</strong> ({sectionLabel(s.target_section)})
-                    </>
+            {suggestions.map((s) => {
+              const status = s.status || 'pending';
+              return (
+                <SuggestionCard key={s.id} suggestion={s}>
+                  {!readOnly && status === 'pending' && (
+                    respondingId === s.id ? (
+                      <div className="suggestion-reject-form">
+                        <input
+                          type="text"
+                          value={responseComment}
+                          onChange={(e) => setResponseComment(e.target.value)}
+                          placeholder="Motivo (opzionale)"
+                        />
+                        <button
+                          className="btn-primary"
+                          type="button"
+                          onClick={() => handleAccept(s)}
+                          disabled={suggestBusy}
+                        >
+                          Applica
+                        </button>
+                        <button
+                          className="btn-danger"
+                          type="button"
+                          onClick={() => handleReject(s)}
+                          disabled={suggestBusy}
+                        >
+                          Rifiuta
+                        </button>
+                        <button
+                          className="btn-link"
+                          type="button"
+                          onClick={() => {
+                            setRespondingId(null);
+                            setResponseComment('');
+                          }}
+                        >
+                          Annulla
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="suggestion-actions">
+                        <button
+                          className="btn-primary"
+                          onClick={() => handleAccept(s)}
+                          disabled={suggestBusy}
+                          type="button"
+                        >
+                          Applica
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => {
+                            setRespondingId(s.id);
+                            setResponseComment('');
+                          }}
+                          disabled={suggestBusy}
+                          type="button"
+                        >
+                          Rispondi con un motivo
+                        </button>
+                      </div>
+                    )
                   )}
-                  {s.kind === 'add' && (
-                    <>
-                      propone di aggiungere <strong>{s.suggested_card_name}</strong>{' '}
-                      ({sectionLabel(s.target_section)})
-                    </>
-                  )}
-                  {s.kind === 'remove' && (
-                    <>
-                      propone di togliere 1 copia di <strong>{s.target_card_name}</strong>{' '}
-                      ({sectionLabel(s.target_section)})
-                    </>
-                  )}
-                </div>
-                {s.comment && <p className="suggestion-comment">"{s.comment}"</p>}
-                {!readOnly && (
-                  <div className="suggestion-actions">
-                    <button
-                      className="btn-primary"
-                      onClick={() => handleAccept(s)}
-                      disabled={suggestBusy}
-                      type="button"
-                    >
-                      Applica
+                  {readOnly && status === 'pending' && s.author_id === user.id && (
+                    <button className="btn-link" onClick={() => handleWithdraw(s)} type="button">
+                      Ritira
                     </button>
-                    <button
-                      className="btn-danger"
-                      onClick={() => handleDismiss(s)}
-                      disabled={suggestBusy}
-                      type="button"
-                    >
-                      Rifiuta
-                    </button>
-                  </div>
-                )}
-                {readOnly && s.author_id === user.id && (
-                  <button className="btn-link" onClick={() => handleDismiss(s)} type="button">
-                    Ritira
-                  </button>
-                )}
-              </li>
-            ))}
+                  )}
+                </SuggestionCard>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {!readOnly && (
+        <section className="history-section">
+          <div className="history-header">
+            <h3>Storico del deck{versions.length > 0 ? ` (${versions.length})` : ''}</h3>
+            <button className="btn-link" type="button" onClick={() => setShowHistory((v) => !v)}>
+              {showHistory ? 'Nascondi' : 'Mostra'}
+            </button>
+          </div>
+
+          {showHistory && (
+            versions.length === 0 ? (
+              <p className="page-message">
+                Nessuna versione salvata. Ne viene creata una a ogni salvataggio.
+              </p>
+            ) : (
+              <ul className="version-list">
+                {versions.map((v) => {
+                  const counts = {
+                    main: (v.cards.main || []).reduce((s, c) => s + c.quantity, 0),
+                    extra: (v.cards.extra || []).reduce((s, c) => s + c.quantity, 0),
+                    side: (v.cards.side || []).reduce((s, c) => s + c.quantity, 0),
+                  };
+                  return (
+                    <li key={v.id} className="version-item">
+                      <div className="version-info">
+                        <span className="version-label">{v.label || 'Versione'}</span>
+                        <span className="version-meta">
+                          {new Date(v.created_at).toLocaleString('it-IT')} · Main {counts.main} · Extra{' '}
+                          {counts.extra} · Side {counts.side}
+                        </span>
+                      </div>
+                      <button
+                        className="btn-secondary"
+                        type="button"
+                        onClick={() => handleRestoreVersion(v)}
+                        disabled={restoringId === v.id}
+                      >
+                        {restoringId === v.id ? 'Ripristino...' : 'Ripristina'}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          )}
+        </section>
+      )}
 
       {artPicker && (
         <div className="art-picker-overlay" onClick={closeArtPicker}>
@@ -899,14 +985,3 @@ export default function DeckEditorPage() {
   );
 }
 
-function sectionLabel(section) {
-  if (section === 'main') return 'Main Deck';
-  if (section === 'extra') return 'Extra Deck';
-  return 'Side Deck';
-}
-
-function suggestionKindLabel(kind) {
-  if (kind === 'add') return '+ Aggiunta';
-  if (kind === 'remove') return '− Rimozione';
-  return '⇄ Sostituzione';
-}

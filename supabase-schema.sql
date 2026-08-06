@@ -226,3 +226,84 @@ alter table card_suggestions alter column target_card_name drop not null;
 alter table card_suggestions alter column target_section drop not null;
 alter table card_suggestions alter column suggested_card_id drop not null;
 alter table card_suggestions alter column suggested_card_name drop not null;
+
+-- 8. Esito dei suggerimenti (visibile a chi li ha inviati) e stato "da leggere"
+-- I suggerimenti non vengono piu' cancellati quando il proprietario risponde: restano
+-- con status 'accepted'/'rejected' e un motivo opzionale, cosi' l'autore vede com'e' andata.
+alter table card_suggestions add column if not exists status text not null default 'pending';
+
+alter table card_suggestions drop constraint if exists card_suggestions_status_check;
+alter table card_suggestions add constraint card_suggestions_status_check
+  check (status in ('pending', 'accepted', 'rejected'));
+
+alter table card_suggestions add column if not exists response_comment text;
+alter table card_suggestions add column if not exists responded_at timestamptz;
+alter table card_suggestions add column if not exists seen_by_owner boolean not null default false;
+
+create index if not exists idx_card_suggestions_status on card_suggestions(deck_id, status);
+
+-- Serve al proprietario per rispondere (status/motivo) e per segnare come letti
+drop policy if exists "Il proprietario del deck risponde ai suggerimenti" on card_suggestions;
+create policy "Il proprietario del deck risponde ai suggerimenti"
+  on card_suggestions for update
+  to authenticated
+  using (
+    exists (
+      select 1 from decks
+      where decks.id = card_suggestions.deck_id
+        and decks.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from decks
+      where decks.id = card_suggestions.deck_id
+        and decks.user_id = auth.uid()
+    )
+  );
+
+-- 9. Storico delle versioni di un deck, per poter tornare a una composizione precedente.
+-- Lo snapshot e' un jsonb { main: [...], extra: [...], side: [...] }: una copia autonoma,
+-- cosi' ripristinare non dipende da cosa c'e' ora in deck_cards.
+create table if not exists deck_versions (
+  id uuid primary key default gen_random_uuid(),
+  deck_id uuid not null references decks(id) on delete cascade,
+  label text,
+  cards jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_deck_versions_deck_id on deck_versions(deck_id, created_at desc);
+
+alter table deck_versions enable row level security;
+
+drop policy if exists "Storico visibile se il deck e proprio o pubblico" on deck_versions;
+create policy "Storico visibile se il deck e proprio o pubblico"
+  on deck_versions for select
+  to authenticated
+  using (
+    exists (
+      select 1 from decks
+      where decks.id = deck_versions.deck_id
+        and (decks.user_id = auth.uid() or decks.is_public = true)
+    )
+  );
+
+drop policy if exists "Solo il proprietario scrive nello storico" on deck_versions;
+create policy "Solo il proprietario scrive nello storico"
+  on deck_versions for all
+  to authenticated
+  using (
+    exists (
+      select 1 from decks
+      where decks.id = deck_versions.deck_id
+        and decks.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from decks
+      where decks.id = deck_versions.deck_id
+        and decks.user_id = auth.uid()
+    )
+  );

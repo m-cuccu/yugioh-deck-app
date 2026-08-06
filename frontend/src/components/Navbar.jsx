@@ -1,10 +1,12 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationsContext';
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const { lang, setLang } = useLanguage();
+  const { unreadCount } = useNotifications();
 
   return (
     <nav className="navbar">
@@ -12,6 +14,10 @@ export default function Navbar() {
       <div className="navbar-links">
         <NavLink to="/" end>
           I miei deck
+        </NavLink>
+        <NavLink to="/suggerimenti">
+          Suggerimenti
+          {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
         </NavLink>
         <NavLink to="/amici">Amici</NavLink>
       </div>

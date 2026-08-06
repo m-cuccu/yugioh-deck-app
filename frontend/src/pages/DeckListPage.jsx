@@ -148,7 +148,14 @@ export default function DeckListPage() {
           {decks.map((deck) => (
             <li key={deck.id} className="deck-card">
               <Link to={`/deck/${deck.id}`} className="deck-card-main">
-                <span className="deck-card-name">{deck.name}</span>
+                <span className="deck-card-name">
+                  {deck.name}
+                  {deck.pendingSuggestions > 0 && (
+                    <span className="deck-card-suggest-badge" title="Suggerimenti da gestire">
+                      {deck.pendingSuggestions} 💡
+                    </span>
+                  )}
+                </span>
                 <span className="deck-card-counts">
                   Main {deck.counts.main} · Extra {deck.counts.extra} · Side {deck.counts.side}
                 </span>
