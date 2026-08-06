@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchCardDetails } from '../lib/ygoApi';
 import { translateAttribute, translateCardType, translateRace } from '../lib/cardI18n';
+import { useBanlist } from '../context/BanlistContext';
+import { banlistClass, banlistLabel } from '../lib/banlist';
 
 // Scheda con effetto e statistiche di una carta.
 // Si puo' passare `card` gia' completo (es. dai risultati di ricerca) oppure solo `cardId`,
 // nel qual caso i dati vengono recuperati al volo.
 export default function CardDetailModal({ card: initialCard, cardId, onClose }) {
   const { lang } = useLanguage();
+  const { statusOf, maxCopiesForCard, format } = useBanlist();
   const [card, setCard] = useState(initialCard || null);
   const [loading, setLoading] = useState(!initialCard);
   const [error, setError] = useState('');
@@ -54,6 +57,13 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
               <p className="card-detail-type">
                 {translateCardType(card.humanReadableCardType || card.type, lang)}
               </p>
+
+              {format !== 'none' && statusOf(card.id) && (
+                <p className={`card-detail-ban ${banlistClass(statusOf(card.id))}`}>
+                  Banlist {format.toUpperCase()}: {banlistLabel(statusOf(card.id), lang)} · massimo{' '}
+                  {maxCopiesForCard(card.id)} {maxCopiesForCard(card.id) === 1 ? 'copia' : 'copie'}
+                </p>
+              )}
 
               {!isMonster && card.race && (
                 <ul className="card-detail-stats">

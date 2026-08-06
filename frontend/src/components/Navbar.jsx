@@ -2,11 +2,14 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useBanlist } from '../context/BanlistContext';
+import { BANLIST_FORMATS } from '../lib/banlist';
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const { lang, setLang } = useLanguage();
   const { unreadCount } = useNotifications();
+  const { format, setFormat } = useBanlist();
 
   return (
     <nav className="navbar">
@@ -22,6 +25,18 @@ export default function Navbar() {
         <NavLink to="/amici">Amici</NavLink>
       </div>
       <div className="navbar-user">
+        <div className="lang-switch" title="Banlist usata per validare i deck">
+          {BANLIST_FORMATS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className={format === f.key ? 'active' : ''}
+              onClick={() => setFormat(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <div className="lang-switch" title="Lingua dei nomi delle carte">
           <button
             type="button"

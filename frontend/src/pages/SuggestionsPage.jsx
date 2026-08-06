@@ -12,11 +12,13 @@ import {
   saveDeckCards,
 } from '../lib/decksApi';
 import { applySuggestionToCards } from '../lib/suggestions';
+import { useBanlist } from '../context/BanlistContext';
 import SuggestionCard from '../components/SuggestionCard';
 
 export default function SuggestionsPage() {
   const { user } = useAuth();
   const { refreshUnread } = useNotifications();
+  const { maxCopiesForCard } = useBanlist();
 
   const [tab, setTab] = useState('received'); // 'received' | 'sent'
   const [incoming, setIncoming] = useState([]);
@@ -55,7 +57,7 @@ export default function SuggestionsPage() {
     setError('');
     try {
       const deck = await getDeck(s.deck_id);
-      const { nextCards, error: applyError } = applySuggestionToCards(deck.cards, s);
+      const { nextCards, error: applyError } = applySuggestionToCards(deck.cards, s, maxCopiesForCard);
       if (applyError) {
         setError(applyError);
         return;

@@ -31,7 +31,9 @@ function totalCopiesOf(cards, cardId) {
 
 // Applica un suggerimento a una composizione di deck.
 // Non muta l'input: restituisce { nextCards } oppure { error } con un messaggio leggibile.
-export function applySuggestionToCards(cards, suggestion) {
+// maxCopiesForCard permette di applicare i limiti della banlist; senza, vale il limite standard di 3.
+export function applySuggestionToCards(cards, suggestion, maxCopiesForCard) {
+  const limitOf = maxCopiesForCard || (() => MAX_COPIES);
   const kind = suggestion.kind || 'replace';
   const section = suggestion.target_section;
   const list = cards[section] || [];
@@ -46,9 +48,13 @@ export function applySuggestionToCards(cards, suggestion) {
     return { nextCards: { ...cards, [section]: nextList } };
   }
 
-  if (totalCopiesOf(cards, suggestion.suggested_card_id) >= MAX_COPIES) {
+  const limit = limitOf(suggestion.suggested_card_id);
+  if (totalCopiesOf(cards, suggestion.suggested_card_id) >= limit) {
     return {
-      error: `"${suggestion.suggested_card_name}" ha già ${MAX_COPIES} copie nel deck, impossibile applicare.`,
+      error:
+        limit === 0
+          ? `"${suggestion.suggested_card_name}" è vietata dalla banlist, impossibile applicare.`
+          : `"${suggestion.suggested_card_name}" ha già il massimo di ${limit} copie consentite, impossibile applicare.`,
     };
   }
 

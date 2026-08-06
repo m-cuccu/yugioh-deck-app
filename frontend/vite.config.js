@@ -31,6 +31,17 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         runtimeCaching: [
           {
+            // la banlist cambia periodicamente: si mostra subito quella in cache
+            // ma si riscarica in background, invece di restare ferma una settimana
+            urlPattern: /^https:\/\/db\.ygoprodeck\.com\/api\/.*banlist=/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'ygoprodeck-banlist',
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 3 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: /^https:\/\/db\.ygoprodeck\.com\/api\//,
             handler: 'CacheFirst',
             options: {

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useBanlist } from '../context/BanlistContext';
+import { banlistClass, banlistLabel } from '../lib/banlist';
 import {
   createDeckVersion,
   createSuggestion,
@@ -13,7 +15,7 @@ import {
   respondToSuggestion,
   saveDeckCards,
 } from '../lib/decksApi';
-import { applySuggestionToCards, MAX_COPIES, sectionLabel } from '../lib/suggestions';
+import { applySuggestionToCards, sectionLabel } from '../lib/suggestions';
 import SuggestionCard from '../components/SuggestionCard';
 import CardDetailModal from '../components/CardDetailModal';
 import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
@@ -45,6 +47,7 @@ export default function DeckEditorPage() {
   const { user } = useAuth();
   const { lang } = useLanguage();
   const { refreshUnread } = useNotifications();
+  const { statusOf, maxCopiesForCard, format: banlistFormat } = useBanlist();
   const navigate = useNavigate();
 
   const [deck, setDeck] = useState(null);
@@ -207,6 +210,19 @@ export default function DeckEditorPage() {
     return map;
   }, [cards]);
 
+  // carte che superano il limite consentito dalla banlist attiva
+  const illegalCards = useMemo(() => {
+    const out = [];
+    for (const [cardId, quantity] of totalCopies) {
+      const limit = maxCopiesForCard(cardId);
+      if (quantity > limit) {
+        const card = [...cards.main, ...cards.extra, ...cards.side].find((c) => c.card_id === cardId);
+        out.push({ cardId, name: card?.card_name || `#${cardId}`, quantity, limit });
+      }
+    }
+    return out;
+  }, [totalCopies, maxCopiesForCard, cards]);
+
   const allCardsFlat = useMemo(() => {
     const flat = [];
     for (const section of ['main', 'extra', 'side']) {
@@ -219,8 +235,13 @@ export default function DeckEditorPage() {
     if (readOnly) return;
     const section = isExtraDeckCard(card) ? 'extra' : 'main';
     const currentCopies = totalCopies.get(card.id) || 0;
-    if (currentCopies >= MAX_COPIES) {
-      setError(`"${card.name}" ha già ${MAX_COPIES} copie nel deck.`);
+    const limit = maxCopiesForCard(card.id);
+    if (currentCopies >= limit) {
+      setError(
+        limit === 0
+          ? `"${card.name}" è vietata dalla banlist ${banlistFormat.toUpperCase()}.`
+          : `"${card.name}" ha già il massimo di ${limit} copie consentite.`
+      );
       return;
     }
     setError('');
@@ -421,7 +442,7 @@ export default function DeckEditorPage() {
 
   async function handleAccept(suggestion) {
     setError('');
-    const { nextCards, error: applyError } = applySuggestionToCards(cards, suggestion);
+    const { nextCards, error: applyError } = applySuggestionToCards(cards, suggestion, maxCopiesForCard);
     if (applyError) {
       setError(applyError);
       return;
@@ -524,6 +545,25 @@ export default function DeckEditorPage() {
 
       {error && <p className="auth-error">{error}</p>}
 
+      {banlistFormat !== 'none' && (
+        illegalCards.length > 0 ? (
+          <div className="banlist-summary is-illegal">
+            <strong>⚠ Deck non conforme alla banlist {banlistFormat.toUpperCase()}</strong>
+            <ul>
+              {illegalCards.map((c) => (
+                <li key={c.cardId}>
+                  {c.name}: {c.quantity} copie, massimo consentito {c.limit}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="banlist-summary is-legal">
+            ✓ Deck conforme alla banlist {banlistFormat.toUpperCase()}
+          </p>
+        )
+      )}
+
       {!readOnly && (
         <div className="card-search">
           <input
@@ -538,7 +578,14 @@ export default function DeckEditorPage() {
               {results.map((card) => (
                 <li key={card.id} className="search-result" onClick={() => addCard(card)}>
                   {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
-                  <span>{card.name}</span>
+                  <span>
+                    {card.name}
+                    {statusOf(card.id) && (
+                      <span className={`ban-badge ${banlistClass(statusOf(card.id))}`}>
+                        {banlistLabel(statusOf(card.id), lang)}
+                      </span>
+                    )}
+                  </span>
                   <span className="search-result-type">{card.type}</span>
                   <button
                     type="button"
@@ -576,8 +623,10 @@ export default function DeckEditorPage() {
               <ul className="deck-card-grid">
                 {cards[section].map((c) => {
                   const rarityClass = c.rarity_label ? rarityToClass(c.rarity_label) : '';
+                  const banStatus = statusOf(c.card_id);
+                  const overLimit = c.quantity > maxCopiesForCard(c.card_id);
                   return (
-                  <li key={c.card_id} className="deck-card-tile">
+                  <li key={c.card_id} className={`deck-card-tile ${overLimit ? 'is-illegal' : ''}`}>
                     {readOnly && <span className="deck-card-qty-badge">×{c.quantity}</span>}
                     {c.card_image && (
                       readOnly ? (
@@ -600,6 +649,15 @@ export default function DeckEditorPage() {
                     <span className={`deck-card-tile-name ${rarityClass ? `name-${rarityClass}` : ''}`}>
                       {c.card_name}
                     </span>
+                    {banStatus && (
+                      <span
+                        className={`ban-badge ${banlistClass(banStatus)}`}
+                        title={`Banlist ${banlistFormat.toUpperCase()}: max ${maxCopiesForCard(c.card_id)} copie`}
+                      >
+                        {banlistLabel(banStatus, lang)}
+                        {overLimit ? ' ⚠' : ''}
+                      </span>
+                    )}
                     {c.rarity_label && <span className="deck-card-tile-rarity">{c.rarity_label}</span>}
                     <button
                       type="button"
@@ -616,7 +674,7 @@ export default function DeckEditorPage() {
                         <button
                           type="button"
                           onClick={() => changeQuantity(section, c.card_id, 1)}
-                          disabled={(totalCopies.get(c.card_id) || 0) >= MAX_COPIES}
+                          disabled={(totalCopies.get(c.card_id) || 0) >= maxCopiesForCard(c.card_id)}
                         >
                           +
                         </button>
@@ -931,12 +989,21 @@ export default function DeckEditorPage() {
               <ul className="related-cards-list">
                 {relatedOptions.map((card) => {
                   const owned = totalCopies.get(card.id) || 0;
-                  const alreadyMax = owned >= MAX_COPIES;
+                  const limit = maxCopiesForCard(card.id);
+                  const alreadyMax = owned >= limit;
+                  const banStatus = statusOf(card.id);
                   return (
                     <li key={card.id} className={`related-card-item ${owned > 0 ? 'is-owned' : ''}`}>
                       {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
                       <div className="related-card-text">
-                        <span className="related-card-name">{card.name}</span>
+                        <span className="related-card-name">
+                          {card.name}
+                          {banStatus && (
+                            <span className={`ban-badge ${banlistClass(banStatus)}`}>
+                              {banlistLabel(banStatus, lang)}
+                            </span>
+                          )}
+                        </span>
                         <span className={`related-card-owned ${owned > 0 ? 'has-copies' : ''}`}>
                           {owned > 0 ? `${owned}x nel deck` : 'non nel deck'}
                         </span>
@@ -955,7 +1022,7 @@ export default function DeckEditorPage() {
                         onClick={() => addCard(card)}
                         disabled={alreadyMax}
                       >
-                        {alreadyMax ? 'Max 3' : '+ Aggiungi'}
+                        {!alreadyMax ? '+ Aggiungi' : limit === 0 ? 'Vietata' : `Max ${limit}`}
                       </button>
                     </li>
                   );

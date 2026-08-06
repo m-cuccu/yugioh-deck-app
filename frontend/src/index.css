@@ -1557,6 +1557,77 @@ button {
   font-weight: 700;
 }
 
+/* --- Banlist --- */
+
+.ban-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.ban-badge.ban-forbidden {
+  border-color: var(--danger);
+  color: #fff;
+  background: var(--danger);
+}
+
+.ban-badge.ban-limited {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.ban-badge.ban-semi {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.deck-card-tile.is-illegal {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.banlist-summary {
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.banlist-summary.is-legal {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.banlist-summary.is-illegal {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.banlist-summary ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.card-detail-ban {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.card-detail-ban.ban-forbidden { color: var(--danger); }
+.card-detail-ban.ban-limited { color: var(--warn); }
+.card-detail-ban.ban-semi { color: var(--ok); }
+
 /* --- Scheda dettaglio carta --- */
 
 .search-result-info {
