@@ -95,6 +95,20 @@ export async function fetchCardSets(cardName, lang) {
   return card?.card_sets || [];
 }
 
+// Scheda completa di una carta (effetto, statistiche) a partire dall'id.
+// Come per le altre chiamate si ripiega sull'altra lingua se il record non esiste.
+export async function fetchCardDetails(cardId, lang) {
+  const langs = [lang || 'en', ...FALLBACK_LANGS.filter((l) => l !== (lang || 'en'))];
+  for (const l of langs) {
+    const res = await fetch(`${BASE_URL}?id=${encodeURIComponent(cardId)}${langParam(l)}`);
+    if (!res.ok) continue;
+    const json = await res.json();
+    const card = json.data?.[0];
+    if (card) return card;
+  }
+  return null;
+}
+
 // Nomi delle carte nella lingua scelta, a partire dagli id.
 // Serve a mostrare un deck salvato nella lingua corrente: i nomi in `deck_cards` sono
 // solo un'istantanea di quando la carta e' stata aggiunta.

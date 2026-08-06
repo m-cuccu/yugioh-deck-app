@@ -15,6 +15,7 @@ import {
 } from '../lib/decksApi';
 import { applySuggestionToCards, MAX_COPIES, sectionLabel } from '../lib/suggestions';
 import SuggestionCard from '../components/SuggestionCard';
+import CardDetailModal from '../components/CardDetailModal';
 import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
 import {
   cardThumbnail,
@@ -79,6 +80,9 @@ export default function DeckEditorPage() {
   const [rarityPicker, setRarityPicker] = useState(null); // { section, cardId, cardName }
   const [rarityOptions, setRarityOptions] = useState([]);
   const [rarityLoading, setRarityLoading] = useState(false);
+
+  // scheda dettaglio: { card } se abbiamo gia' i dati completi, { cardId } se vanno recuperati
+  const [cardDetail, setCardDetail] = useState(null);
 
   const [respondingId, setRespondingId] = useState(null); // suggerimento a cui si sta rispondendo
   const [responseComment, setResponseComment] = useState('');
@@ -536,6 +540,17 @@ export default function DeckEditorPage() {
                   {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
                   <span>{card.name}</span>
                   <span className="search-result-type">{card.type}</span>
+                  <button
+                    type="button"
+                    className="search-result-info"
+                    title="Vedi effetto"
+                    onClick={(e) => {
+                      e.stopPropagation(); // altrimenti aggiungerebbe la carta al deck
+                      setCardDetail({ card });
+                    }}
+                  >
+                    ℹ️
+                  </button>
                 </li>
               ))}
             </ul>
@@ -586,6 +601,14 @@ export default function DeckEditorPage() {
                       {c.card_name}
                     </span>
                     {c.rarity_label && <span className="deck-card-tile-rarity">{c.rarity_label}</span>}
+                    <button
+                      type="button"
+                      className="related-cards-trigger"
+                      onClick={() => setCardDetail({ cardId: c.card_id })}
+                      title="Vedi effetto e statistiche"
+                    >
+                      ℹ️ Effetto
+                    </button>
                     {!readOnly && (
                       <div className="deck-card-tile-controls">
                         <button type="button" onClick={() => changeQuantity(section, c.card_id, -1)}>-</button>
@@ -920,6 +943,14 @@ export default function DeckEditorPage() {
                       </div>
                       <button
                         type="button"
+                        className="search-result-info"
+                        title="Vedi effetto"
+                        onClick={() => setCardDetail({ card })}
+                      >
+                        ℹ️
+                      </button>
+                      <button
+                        type="button"
                         className="btn-primary"
                         onClick={() => addCard(card)}
                         disabled={alreadyMax}
@@ -980,6 +1011,14 @@ export default function DeckEditorPage() {
             )}
           </div>
         </div>
+      )}
+
+      {cardDetail && (
+        <CardDetailModal
+          card={cardDetail.card}
+          cardId={cardDetail.cardId}
+          onClose={() => setCardDetail(null)}
+        />
       )}
     </div>
   );

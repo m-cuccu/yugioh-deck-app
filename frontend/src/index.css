@@ -1557,6 +1557,85 @@ button {
   font-weight: 700;
 }
 
+/* --- Scheda dettaglio carta --- */
+
+.search-result-info {
+  border: none;
+  background: none;
+  font-size: 15px;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.card-detail-modal {
+  max-width: 560px;
+}
+
+.card-detail-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.card-detail-image {
+  width: 180px;
+  max-width: 100%;
+  border-radius: 8px;
+  align-self: flex-start;
+}
+
+.card-detail-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.card-detail-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.card-detail-stats {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+.card-detail-stats li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 2px;
+}
+
+.card-detail-stats span {
+  color: var(--text-muted);
+}
+
+.card-detail-stats strong {
+  color: var(--text-h);
+}
+
+.card-detail-archetype {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.card-detail-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
 /* --- Storico versioni --- */
 
 .history-section {
