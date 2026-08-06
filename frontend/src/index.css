@@ -1624,6 +1624,38 @@ button {
   margin-bottom: 10px;
 }
 
+.banlist-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.banlist-card {
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.banlist-card img {
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 .card-detail-ban.ban-forbidden { color: var(--danger); }
 .card-detail-ban.ban-limited { color: var(--warn); }
 .card-detail-ban.ban-semi { color: var(--ok); }

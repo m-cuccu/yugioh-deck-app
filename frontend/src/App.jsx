@@ -6,6 +6,7 @@ import DeckListPage from './pages/DeckListPage';
 import DeckEditorPage from './pages/DeckEditorPage';
 import FriendsPage from './pages/FriendsPage';
 import SuggestionsPage from './pages/SuggestionsPage';
+import BanlistPage from './pages/BanlistPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -22,6 +23,7 @@ function App() {
           <Route path="/" element={<DeckListPage />} />
           <Route path="/deck/:deckId" element={<DeckEditorPage />} />
           <Route path="/suggerimenti" element={<SuggestionsPage />} />
+          <Route path="/banlist" element={<BanlistPage />} />
           <Route path="/amici" element={<FriendsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

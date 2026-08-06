@@ -22,6 +22,7 @@ export default function Navbar() {
           Suggerimenti
           {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
         </NavLink>
+        <NavLink to="/banlist">Banlist</NavLink>
         <NavLink to="/amici">Amici</NavLink>
       </div>
       <div className="navbar-user">

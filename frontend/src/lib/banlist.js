@@ -58,6 +58,44 @@ function writeCache(format, map) {
   }
 }
 
+async function fetchBanlistIn(format, lang) {
+  const langSuffix = lang && lang !== 'en' ? `&language=${encodeURIComponent(lang)}` : '';
+  const res = await fetch(`${BASE_URL}?banlist=${encodeURIComponent(format)}${langSuffix}`);
+  if (!res.ok) throw new Error('Impossibile recuperare la banlist');
+  const json = await res.json();
+
+  const field = STATUS_FIELD[format];
+  return (json.data || [])
+    .map((card) => ({
+      id: card.id,
+      name: card.name,
+      type: card.type,
+      image: card.card_images?.[0]?.image_url_small || card.card_images?.[0]?.image_url || null,
+      status: card.banlist_info?.[field] || null,
+    }))
+    .filter((c) => c.status);
+}
+
+// Elenco completo delle carte in banlist, con nome e immagine, per la pagina di consultazione.
+// Non passa dalla cache in localStorage (sarebbe troppo grande): se ne occupa il service worker.
+// Come per la ricerca, l'elenco in italiano e' incompleto (mancano le carte senza record
+// tradotto), quindi si unisce a quello inglese: la lista deve essere completa per forza.
+export async function fetchBanlistCards(format, lang) {
+  if (!format || format === 'none') return [];
+
+  if (!lang || lang === 'en') return fetchBanlistIn(format, 'en');
+
+  const [localized, english] = await Promise.all([
+    fetchBanlistIn(format, lang).catch(() => []),
+    fetchBanlistIn(format, 'en'),
+  ]);
+
+  const byId = new Map();
+  for (const c of english) byId.set(c.id, c);
+  for (const c of localized) byId.set(c.id, c);
+  return [...byId.values()];
+}
+
 // Restituisce un oggetto { [cardId]: 'Forbidden' | 'Limited' | 'Semi-Limited' }
 export async function fetchBanlist(format) {
   if (!format || format === 'none') return {};
