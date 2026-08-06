@@ -153,15 +153,19 @@ create trigger trg_decks_updated_at
   execute function set_updated_at();
 
 -- 5. Suggerimenti di carte sui deck pubblici altrui
+-- kind = 'replace' (sostituisci target con suggested), 'add' (aggiungi suggested nella
+-- sezione target_section) oppure 'remove' (togli target). I campi non pertinenti al tipo
+-- di suggerimento restano NULL, per questo target_* e suggested_* sono nullable.
 create table if not exists card_suggestions (
   id uuid primary key default gen_random_uuid(),
   deck_id uuid not null references decks(id) on delete cascade,
   author_id uuid not null references profiles(id) on delete cascade,
-  target_card_id integer not null,
-  target_card_name text not null,
-  target_section text not null check (target_section in ('main', 'extra', 'side')),
-  suggested_card_id integer not null,
-  suggested_card_name text not null,
+  kind text not null default 'replace' check (kind in ('replace', 'add', 'remove')),
+  target_card_id integer,
+  target_card_name text,
+  target_section text check (target_section in ('main', 'extra', 'side')),
+  suggested_card_id integer,
+  suggested_card_name text,
   suggested_card_image text,
   comment text,
   created_at timestamptz not null default now()
@@ -209,3 +213,16 @@ create policy "Autore o proprietario del deck eliminano il suggerimento"
 
 -- 6. Rarita' scelta per ogni carta del deck (es. "Ultra Rare - Battle of Chaos")
 alter table deck_cards add column if not exists rarity_label text;
+
+-- 7. Suggerimenti anche di aggiunta/rimozione, non solo sostituzione
+alter table card_suggestions add column if not exists kind text not null default 'replace';
+
+alter table card_suggestions drop constraint if exists card_suggestions_kind_check;
+alter table card_suggestions add constraint card_suggestions_kind_check
+  check (kind in ('replace', 'add', 'remove'));
+
+alter table card_suggestions alter column target_card_id drop not null;
+alter table card_suggestions alter column target_card_name drop not null;
+alter table card_suggestions alter column target_section drop not null;
+alter table card_suggestions alter column suggested_card_id drop not null;
+alter table card_suggestions alter column suggested_card_name drop not null;

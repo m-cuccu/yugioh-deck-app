@@ -119,6 +119,19 @@ export async function searchProfilesByUsername(query, excludeUserId) {
   return data;
 }
 
+// Utenti iscritti di recente, mostrati nella pagina Amici prima di cercare
+export async function listRecentProfiles(excludeUserId, limit = 30) {
+  let request = supabase
+    .from('profiles')
+    .select('id, username')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (excludeUserId) request = request.neq('id', excludeUserId);
+  const { data, error } = await request;
+  if (error) throw error;
+  return data;
+}
+
 export async function listPublicDecksByUser(userId) {
   const { data, error } = await supabase
     .from('decks')
@@ -140,15 +153,17 @@ export async function listSuggestions(deckId) {
   return data;
 }
 
+// payload.kind: 'replace' | 'add' | 'remove'
 export async function createSuggestion(deckId, authorId, payload) {
   const { error } = await supabase.from('card_suggestions').insert({
     deck_id: deckId,
     author_id: authorId,
-    target_card_id: payload.targetCardId,
-    target_card_name: payload.targetCardName,
-    target_section: payload.targetSection,
-    suggested_card_id: payload.suggestedCardId,
-    suggested_card_name: payload.suggestedCardName,
+    kind: payload.kind || 'replace',
+    target_card_id: payload.targetCardId ?? null,
+    target_card_name: payload.targetCardName ?? null,
+    target_section: payload.targetSection ?? null,
+    suggested_card_id: payload.suggestedCardId ?? null,
+    suggested_card_name: payload.suggestedCardName ?? null,
     suggested_card_image: payload.suggestedCardImage || null,
     comment: payload.comment || null,
   });

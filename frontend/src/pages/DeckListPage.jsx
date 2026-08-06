@@ -170,8 +170,20 @@ export default function DeckListPage() {
                   <button type="button" onClick={() => handleDuplicate(deck)} disabled={busyId === deck.id}>
                     Duplica
                   </button>
-                  <button type="button" onClick={() => handleExport(deck, 'json')}>JSON</button>
-                  <button type="button" onClick={() => handleExport(deck, 'ydk')}>YDK</button>
+                  <button
+                    type="button"
+                    onClick={() => handleExport(deck, 'ydk')}
+                    title="Esporta in formato .ydk, compatibile con i simulatori (EDOPro, Dueling Book, YGOPRODeck)"
+                  >
+                    ⬇ Esporta YDK
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExport(deck, 'json')}
+                    title="Esporta in formato .json (backup, reimportabile in questa app)"
+                  >
+                    ⬇ Esporta JSON
+                  </button>
                   <button
                     type="button"
                     className="btn-danger"

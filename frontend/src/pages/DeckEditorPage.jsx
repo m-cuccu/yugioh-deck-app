@@ -8,6 +8,7 @@ import {
   listSuggestions,
   saveDeckCards,
 } from '../lib/decksApi';
+import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
 import {
   cardThumbnail,
   fetchCardArts,
@@ -49,6 +50,7 @@ export default function DeckEditorPage() {
 
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [suggestKind, setSuggestKind] = useState('replace'); // 'replace' | 'add' | 'remove'
   const [targetKey, setTargetKey] = useState('');
   const [suggestQuery, setSuggestQuery] = useState('');
   const [suggestResults, setSuggestResults] = useState([]);
@@ -288,6 +290,13 @@ export default function DeckEditorPage() {
     closeRarityPicker();
   }
 
+  // esporta quello che si vede a schermo (comprese le modifiche non ancora salvate)
+  function handleExport(format) {
+    const snapshot = { name: deck.name, cards };
+    if (format === 'json') exportDeckAsJson(snapshot);
+    else exportDeckAsYdk(snapshot);
+  }
+
   async function handleSave() {
     setSaving(true);
     setError('');
@@ -303,24 +312,34 @@ export default function DeckEditorPage() {
 
   async function handleSubmitSuggestion(e) {
     e.preventDefault();
-    if (!targetKey || !selectedReplacement) return;
-    const [targetSection, targetCardIdStr] = targetKey.split(':');
-    const targetCardId = Number(targetCardIdStr);
-    const target = cards[targetSection].find((c) => c.card_id === targetCardId);
-    if (!target) return;
+
+    const payload = { kind: suggestKind, comment };
+
+    if (suggestKind === 'replace' || suggestKind === 'remove') {
+      if (!targetKey) return;
+      const [targetSection, targetCardIdStr] = targetKey.split(':');
+      const target = cards[targetSection].find((c) => c.card_id === Number(targetCardIdStr));
+      if (!target) return;
+      payload.targetCardId = target.card_id;
+      payload.targetCardName = target.card_name;
+      payload.targetSection = targetSection;
+    }
+
+    if (suggestKind === 'replace' || suggestKind === 'add') {
+      if (!selectedReplacement) return;
+      payload.suggestedCardId = selectedReplacement.id;
+      payload.suggestedCardName = selectedReplacement.name;
+      payload.suggestedCardImage = cardThumbnail(selectedReplacement);
+      // per l'aggiunta la sezione di destinazione la deduciamo dal tipo di carta
+      if (suggestKind === 'add') {
+        payload.targetSection = isExtraDeckCard(selectedReplacement) ? 'extra' : 'main';
+      }
+    }
 
     setSuggestBusy(true);
     setError('');
     try {
-      await createSuggestion(deckId, user.id, {
-        targetCardId: target.card_id,
-        targetCardName: target.card_name,
-        targetSection,
-        suggestedCardId: selectedReplacement.id,
-        suggestedCardName: selectedReplacement.name,
-        suggestedCardImage: cardThumbnail(selectedReplacement),
-        comment,
-      });
+      await createSuggestion(deckId, user.id, payload);
       setTargetKey('');
       setSuggestQuery('');
       setSuggestResults([]);
@@ -334,33 +353,42 @@ export default function DeckEditorPage() {
     }
   }
 
-  async function handleAccept(suggestion) {
-    setError('');
+  function applySuggestionToCards(suggestion) {
+    const kind = suggestion.kind || 'replace';
     const section = suggestion.target_section;
-    const list = cards[section];
-    const targetIndex = list.findIndex((c) => c.card_id === suggestion.target_card_id);
-    if (targetIndex === -1) {
-      setError('La carta da sostituire non è più nel deck.');
-      return;
+    const list = cards[section] || [];
+
+    if (kind === 'remove') {
+      if (!list.some((c) => c.card_id === suggestion.target_card_id)) {
+        return { error: 'La carta da rimuovere non è più nel deck.' };
+      }
+      const nextList = list
+        .map((c) => (c.card_id === suggestion.target_card_id ? { ...c, quantity: c.quantity - 1 } : c))
+        .filter((c) => c.quantity > 0);
+      return { nextCards: { ...cards, [section]: nextList } };
     }
 
-    const currentTotalOfSuggested = totalCopies.get(suggestion.suggested_card_id) || 0;
-    if (currentTotalOfSuggested >= MAX_COPIES) {
-      setError(`"${suggestion.suggested_card_name}" ha già ${MAX_COPIES} copie nel deck, impossibile applicare.`);
-      return;
+    if ((totalCopies.get(suggestion.suggested_card_id) || 0) >= MAX_COPIES) {
+      return { error: `"${suggestion.suggested_card_name}" ha già ${MAX_COPIES} copie nel deck, impossibile applicare.` };
     }
 
-    const nextList = list
-      .map((c) => (c.card_id === suggestion.target_card_id ? { ...c, quantity: c.quantity - 1 } : c))
-      .filter((c) => c.quantity > 0);
+    let baseList = list;
+    if (kind === 'replace') {
+      if (!list.some((c) => c.card_id === suggestion.target_card_id)) {
+        return { error: 'La carta da sostituire non è più nel deck.' };
+      }
+      baseList = list
+        .map((c) => (c.card_id === suggestion.target_card_id ? { ...c, quantity: c.quantity - 1 } : c))
+        .filter((c) => c.quantity > 0);
+    }
 
-    const existingReplacement = nextList.find((c) => c.card_id === suggestion.suggested_card_id);
-    const finalList = existingReplacement
-      ? nextList.map((c) =>
+    const existing = baseList.find((c) => c.card_id === suggestion.suggested_card_id);
+    const nextList = existing
+      ? baseList.map((c) =>
           c.card_id === suggestion.suggested_card_id ? { ...c, quantity: c.quantity + 1 } : c
         )
       : [
-          ...nextList,
+          ...baseList,
           {
             card_id: suggestion.suggested_card_id,
             card_name: suggestion.suggested_card_name,
@@ -370,7 +398,16 @@ export default function DeckEditorPage() {
           },
         ];
 
-    const nextCards = { ...cards, [section]: finalList };
+    return { nextCards: { ...cards, [section]: nextList } };
+  }
+
+  async function handleAccept(suggestion) {
+    setError('');
+    const { nextCards, error: applyError } = applySuggestionToCards(suggestion);
+    if (applyError) {
+      setError(applyError);
+      return;
+    }
 
     setSuggestBusy(true);
     try {
@@ -404,13 +441,21 @@ export default function DeckEditorPage() {
   return (
     <div className="page editor-page">
       <div className="page-header">
-        <button className="btn-link" onClick={() => navigate('/')} type="button">← Indietro</button>
+        <button className="btn-link" onClick={() => navigate(-1)} type="button">← Indietro</button>
         <h2>{deck.name}{readOnly && <span className="badge-readonly">di altro utente</span>}</h2>
-        {!readOnly && (
-          <button className="btn-primary" onClick={handleSave} disabled={!dirty || saving} type="button">
-            {saving ? 'Salvataggio...' : dirty ? 'Salva modifiche' : 'Salvato'}
+        <div className="editor-actions">
+          <button className="btn-secondary" onClick={() => handleExport('json')} type="button">
+            Esporta JSON
           </button>
-        )}
+          <button className="btn-secondary" onClick={() => handleExport('ydk')} type="button">
+            Esporta YDK
+          </button>
+          {!readOnly && (
+            <button className="btn-primary" onClick={handleSave} disabled={!dirty || saving} type="button">
+              {saving ? 'Salvataggio...' : dirty ? 'Salva modifiche' : 'Salvato'}
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <p className="auth-error">{error}</p>}
@@ -458,6 +503,7 @@ export default function DeckEditorPage() {
                   const rarityClass = c.rarity_label ? rarityToClass(c.rarity_label) : '';
                   return (
                   <li key={c.card_id} className="deck-card-tile">
+                    {readOnly && <span className="deck-card-qty-badge">×{c.quantity}</span>}
                     {c.card_image && (
                       readOnly ? (
                         <span className={`card-art-wrap ${rarityClass}`} title={c.rarity_label || undefined}>
@@ -533,48 +579,77 @@ export default function DeckEditorPage() {
 
         {readOnly && (
           <form onSubmit={handleSubmitSuggestion} className="suggestion-form">
-            <label>
-              Carta da sostituire
-              <select value={targetKey} onChange={(e) => setTargetKey(e.target.value)}>
-                <option value="">-- scegli una carta del deck --</option>
-                {allCardsFlat.map((c) => (
-                  <option key={`${c.section}:${c.card_id}`} value={`${c.section}:${c.card_id}`}>
-                    {c.card_name} ({sectionLabel(c.section)})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="suggest-kind-tabs">
+              {[
+                { key: 'replace', label: '⇄ Sostituisci' },
+                { key: 'add', label: '+ Aggiungi' },
+                { key: 'remove', label: '− Rimuovi' },
+              ].map((k) => (
+                <button
+                  key={k.key}
+                  type="button"
+                  className={suggestKind === k.key ? 'active' : ''}
+                  onClick={() => {
+                    setSuggestKind(k.key);
+                    setTargetKey('');
+                    setSuggestQuery('');
+                    setSuggestResults([]);
+                    setSelectedReplacement(null);
+                  }}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
 
-            <label>
-              Carta suggerita al suo posto
-              <input
-                type="text"
-                value={suggestQuery}
-                onChange={(e) => {
-                  setSuggestQuery(e.target.value);
-                  setSelectedReplacement(null);
-                }}
-                placeholder="Cerca una carta..."
-              />
-            </label>
-            {suggestSearching && <p className="page-message">Ricerca...</p>}
-            {!selectedReplacement && suggestResults.length > 0 && (
-              <ul className="search-results">
-                {suggestResults.map((card) => (
-                  <li
-                    key={card.id}
-                    className="search-result"
-                    onClick={() => {
-                      setSelectedReplacement(card);
-                      setSuggestQuery(card.name);
-                      setSuggestResults([]);
+            {(suggestKind === 'replace' || suggestKind === 'remove') && (
+              <label>
+                {suggestKind === 'replace' ? 'Carta da sostituire' : 'Carta da rimuovere'}
+                <select value={targetKey} onChange={(e) => setTargetKey(e.target.value)}>
+                  <option value="">-- scegli una carta del deck --</option>
+                  {allCardsFlat.map((c) => (
+                    <option key={`${c.section}:${c.card_id}`} value={`${c.section}:${c.card_id}`}>
+                      {c.card_name} ({sectionLabel(c.section)}) ×{c.quantity}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {(suggestKind === 'replace' || suggestKind === 'add') && (
+              <>
+                <label>
+                  {suggestKind === 'replace' ? 'Carta suggerita al suo posto' : 'Carta da aggiungere'}
+                  <input
+                    type="text"
+                    value={suggestQuery}
+                    onChange={(e) => {
+                      setSuggestQuery(e.target.value);
+                      setSelectedReplacement(null);
                     }}
-                  >
-                    {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
-                    <span>{card.name}</span>
-                  </li>
-                ))}
-              </ul>
+                    placeholder="Cerca una carta..."
+                  />
+                </label>
+                {suggestSearching && <p className="page-message">Ricerca...</p>}
+                {!selectedReplacement && suggestResults.length > 0 && (
+                  <ul className="search-results">
+                    {suggestResults.map((card) => (
+                      <li
+                        key={card.id}
+                        className="search-result"
+                        onClick={() => {
+                          setSelectedReplacement(card);
+                          setSuggestQuery(card.name);
+                          setSuggestResults([]);
+                        }}
+                      >
+                        {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
+                        <span>{card.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
 
             <label>
@@ -583,14 +658,19 @@ export default function DeckEditorPage() {
                 type="text"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Perché questa carta?"
+                placeholder={suggestKind === 'remove' ? 'Perché toglierla?' : 'Perché questa carta?'}
               />
             </label>
 
             <button
               className="btn-primary"
               type="submit"
-              disabled={!targetKey || !selectedReplacement || suggestBusy}
+              disabled={
+                suggestBusy ||
+                (suggestKind === 'replace' && (!targetKey || !selectedReplacement)) ||
+                (suggestKind === 'add' && !selectedReplacement) ||
+                (suggestKind === 'remove' && !targetKey)
+              }
             >
               Invia suggerimento
             </button>
@@ -606,9 +686,28 @@ export default function DeckEditorPage() {
             {suggestions.map((s) => (
               <li key={s.id} className="suggestion-item">
                 <div>
+                  <span className={`suggestion-kind kind-${s.kind || 'replace'}`}>
+                    {suggestionKindLabel(s.kind)}
+                  </span>{' '}
                   <span className="suggestion-author">{s.profiles?.username || 'Un utente'}</span>{' '}
-                  propone <strong>{s.suggested_card_name}</strong> al posto di{' '}
-                  <strong>{s.target_card_name}</strong> ({sectionLabel(s.target_section)})
+                  {(s.kind || 'replace') === 'replace' && (
+                    <>
+                      propone <strong>{s.suggested_card_name}</strong> al posto di{' '}
+                      <strong>{s.target_card_name}</strong> ({sectionLabel(s.target_section)})
+                    </>
+                  )}
+                  {s.kind === 'add' && (
+                    <>
+                      propone di aggiungere <strong>{s.suggested_card_name}</strong>{' '}
+                      ({sectionLabel(s.target_section)})
+                    </>
+                  )}
+                  {s.kind === 'remove' && (
+                    <>
+                      propone di togliere 1 copia di <strong>{s.target_card_name}</strong>{' '}
+                      ({sectionLabel(s.target_section)})
+                    </>
+                  )}
                 </div>
                 {s.comment && <p className="suggestion-comment">"{s.comment}"</p>}
                 {!readOnly && (
@@ -764,4 +863,10 @@ function sectionLabel(section) {
   if (section === 'main') return 'Main Deck';
   if (section === 'extra') return 'Extra Deck';
   return 'Side Deck';
+}
+
+function suggestionKindLabel(kind) {
+  if (kind === 'add') return '+ Aggiunta';
+  if (kind === 'remove') return '− Rimozione';
+  return '⇄ Sostituzione';
 }
