@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // la registrazione la facciamo a mano in main.jsx, per poter ricaricare
+      // la pagina appena una nuova versione prende il controllo
+      injectRegister: null,
       includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'Yu-Gi-Oh Deck Builder',

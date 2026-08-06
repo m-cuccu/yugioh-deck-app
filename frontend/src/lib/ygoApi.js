@@ -6,16 +6,50 @@ function langParam(lang) {
   return lang && lang !== 'en' ? `&language=${encodeURIComponent(lang)}` : '';
 }
 
+const FALLBACK_LANGS = ['en', 'it'];
+
+async function searchIn(query, lang) {
+  const res = await fetch(`${BASE_URL}?fname=${encodeURIComponent(query)}${langParam(lang)}`);
+  if (res.status === 400) return []; // l'API risponde 400 quando non trova nulla
+  if (!res.ok) throw new Error('Impossibile contattare il servizio carte');
+  const json = await res.json();
+  return json.data || [];
+}
+
 export async function searchCards(query, lang) {
   const q = query.trim();
   if (!q) return [];
 
-  const url = `${BASE_URL}?fname=${encodeURIComponent(q)}${langParam(lang)}`;
-  const res = await fetch(url);
-  if (res.status === 400) return []; // API returns 400 when nothing matches
-  if (!res.ok) throw new Error('Impossibile contattare il servizio carte');
-  const json = await res.json();
-  return json.data || [];
+  if (!lang || lang === 'en') return searchIn(q, 'en');
+
+  // Non tutte le carte hanno un record nella lingua scelta (es. "Melffys' Joyful Surprise"
+  // non esiste in italiano): cercando solo in quella lingua risulterebbero introvabili.
+  // Si uniscono i due elenchi per id, tenendo il nome localizzato quando c'e'.
+  const [localized, english] = await Promise.all([
+    searchIn(q, lang).catch(() => []),
+    searchIn(q, 'en').catch(() => []),
+  ]);
+
+  const byId = new Map();
+  for (const c of english) byId.set(c.id, c);
+  for (const c of localized) byId.set(c.id, c);
+
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Cerca una carta per nome esatto provando prima la lingua richiesta e poi le altre:
+// serve perche' il nome memorizzato puo' essere in una lingua diversa da quella attiva
+// (tipicamente inglese, per le carte prive di traduzione).
+async function fetchCardByName(cardName, lang) {
+  const langs = [lang || 'en', ...FALLBACK_LANGS.filter((l) => l !== (lang || 'en'))];
+  for (const l of langs) {
+    const res = await fetch(`${BASE_URL}?name=${encodeURIComponent(cardName)}${langParam(l)}`);
+    if (!res.ok) continue;
+    const json = await res.json();
+    const card = json.data?.[0];
+    if (card) return card;
+  }
+  return null;
 }
 
 export function isExtraDeckCard(card) {
@@ -35,21 +69,15 @@ export function cardThumbnail(card) {
 // Nota: l'API di YGOPRODeck restituisce tutte le art alternative solo cercando per nome esatto;
 // la ricerca per id restituisce una sola immagine.
 export async function fetchCardArts(cardName, lang) {
-  const url = `${BASE_URL}?name=${encodeURIComponent(cardName)}${langParam(lang)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Impossibile recuperare le arti di questa carta');
-  const json = await res.json();
-  const card = json.data?.[0];
+  const card = await fetchCardByName(cardName, lang);
   return card?.card_images || [];
 }
 
 // Carte "correlate": stesso archetipo della carta data (es. Mago Nero -> Ragazza Maga Nera, ecc.)
 // L'archetipo resta in inglese anche interrogando in italiano: e' una chiave interna, non un'etichetta.
 export async function fetchRelatedCards(cardName, lang) {
-  const infoRes = await fetch(`${BASE_URL}?name=${encodeURIComponent(cardName)}${langParam(lang)}`);
-  if (!infoRes.ok) throw new Error('Impossibile recuperare la carta');
-  const infoJson = await infoRes.json();
-  const archetype = infoJson.data?.[0]?.archetype;
+  const card = await fetchCardByName(cardName, lang);
+  const archetype = card?.archetype;
   if (!archetype) return [];
 
   const res = await fetch(
@@ -58,16 +86,12 @@ export async function fetchRelatedCards(cardName, lang) {
   if (res.status === 400) return [];
   if (!res.ok) throw new Error('Impossibile recuperare le carte correlate');
   const json = await res.json();
-  return (json.data || []).filter((c) => c.name !== cardName);
+  return (json.data || []).filter((c) => c.id !== card.id);
 }
 
 // Elenco delle edizioni (set + rarita') in cui una carta e' stata stampata.
 export async function fetchCardSets(cardName, lang) {
-  const url = `${BASE_URL}?name=${encodeURIComponent(cardName)}${langParam(lang)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Impossibile recuperare le edizioni di questa carta');
-  const json = await res.json();
-  const card = json.data?.[0];
+  const card = await fetchCardByName(cardName, lang);
   return card?.card_sets || [];
 }
 
