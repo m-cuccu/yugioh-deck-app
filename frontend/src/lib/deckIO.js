@@ -69,27 +69,41 @@ function parseYdkIds(content) {
   return sections;
 }
 
+async function fetchCardsByIds(ids, lang) {
+  if (ids.length === 0) return [];
+  const langSuffix = lang && lang !== 'en' ? `&language=${encodeURIComponent(lang)}` : '';
+  const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${ids.join(',')}${langSuffix}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data || [];
+}
+
 export async function parseYdkFile(content, deckName, lang) {
   const idsBySection = parseYdkIds(content);
   const allIds = [...new Set([...idsBySection.main, ...idsBySection.extra, ...idsBySection.side])];
 
+  // Interrogando solo nella lingua scelta le carte prive di traduzione non tornano affatto,
+  // e finirebbero nel deck come segnaposto senza nome ne' immagine. Si interroga quindi anche
+  // in inglese e si uniscono i risultati, preferendo la versione localizzata quando esiste.
   const cardMap = new Map();
   if (allIds.length > 0) {
-    const langSuffix = lang && lang !== 'en' ? `&language=${encodeURIComponent(lang)}` : '';
-    const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?id=${allIds.join(',')}${langSuffix}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const json = await res.json();
-      for (const card of json.data || []) cardMap.set(String(card.id), card);
-    }
+    const [localized, english] = await Promise.all([
+      lang && lang !== 'en' ? fetchCardsByIds(allIds, lang).catch(() => []) : Promise.resolve([]),
+      fetchCardsByIds(allIds, 'en').catch(() => []),
+    ]);
+    for (const card of english) cardMap.set(String(card.id), card);
+    for (const card of localized) cardMap.set(String(card.id), card);
   }
 
   const cards = { main: [], extra: [], side: [] };
+  const unresolvedIds = [];
   for (const section of SECTIONS) {
     const counts = new Map();
     for (const id of idsBySection[section]) counts.set(id, (counts.get(id) || 0) + 1);
     for (const [id, quantity] of counts) {
       const card = cardMap.get(id);
+      if (!card) unresolvedIds.push(id);
       cards[section].push({
         card_id: Number(id),
         card_name: card ? card.name : `Carta #${id}`,
@@ -99,5 +113,5 @@ export async function parseYdkFile(content, deckName, lang) {
     }
   }
 
-  return { name: deckName || 'Deck importato', cards };
+  return { name: deckName || 'Deck importato', cards, unresolvedIds };
 }

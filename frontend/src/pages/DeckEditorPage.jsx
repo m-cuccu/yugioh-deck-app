@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,7 +18,7 @@ import {
 import { applySuggestionToCards, sectionLabel } from '../lib/suggestions';
 import SuggestionCard from '../components/SuggestionCard';
 import CardDetailModal from '../components/CardDetailModal';
-import { exportDeckAsJson, exportDeckAsYdk } from '../lib/deckIO';
+import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } from '../lib/deckIO';
 import {
   cardThumbnail,
   fetchCardArts,
@@ -92,6 +92,10 @@ export default function DeckEditorPage() {
   const [versions, setVersions] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [restoringId, setRestoringId] = useState(null);
+
+  const importInputRef = useRef(null);
+  const [notice, setNotice] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const readOnly = deck ? deck.user_id !== user.id : false;
 
@@ -381,6 +385,49 @@ export default function DeckEditorPage() {
     else exportDeckAsYdk(snapshot);
   }
 
+  // Reimporta un file dentro il deck corrente, sostituendone le carte.
+  // Lo stato precedente finisce nello storico, quindi l'operazione resta annullabile.
+  async function handleReimport(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!window.confirm('Sostituire tutte le carte di questo deck con quelle del file? Lo stato attuale viene salvato nello storico.')) {
+      return;
+    }
+
+    setImporting(true);
+    setError('');
+    setNotice('');
+    try {
+      const content = await file.text();
+      const parsed = file.name.endsWith('.ydk')
+        ? await parseYdkFile(content, deck.name, lang)
+        : parseJsonDeckFile(content);
+
+      await createDeckVersion(deckId, cards, 'Prima di un reimport');
+      await saveDeckCards(deckId, parsed.cards);
+      setCards({
+        main: parsed.cards.main.map(toEditable),
+        extra: parsed.cards.extra.map(toEditable),
+        side: parsed.cards.side.map(toEditable),
+      });
+      setDirty(false);
+      await reloadVersions();
+
+      const unresolved = parsed.unresolvedIds || [];
+      setNotice(
+        unresolved.length === 0
+          ? 'Deck reimportato: tutte le carte sono state riconosciute.'
+          : `Deck reimportato, ma ${unresolved.length} ${unresolved.length === 1 ? 'carta non è stata riconosciuta' : 'carte non sono state riconosciute'} (${unresolved.join(', ')}): non sono presenti nel database delle carte, probabilmente perché troppo recenti.`
+      );
+    } catch (err) {
+      setError('Import fallito: ' + err.message);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setError('');
@@ -536,14 +583,40 @@ export default function DeckEditorPage() {
             Esporta YDK
           </button>
           {!readOnly && (
-            <button className="btn-primary" onClick={handleSave} disabled={!dirty || saving} type="button">
-              {saving ? 'Salvataggio...' : dirty ? 'Salva modifiche' : 'Salvato'}
-            </button>
+            <>
+              <button
+                className="btn-secondary"
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+                type="button"
+                title="Sostituisce le carte di questo deck con quelle di un file .ydk o .json"
+              >
+                {importing ? 'Import...' : 'Reimporta qui'}
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,.ydk"
+                hidden
+                onChange={handleReimport}
+              />
+              <button className="btn-primary" onClick={handleSave} disabled={!dirty || saving} type="button">
+                {saving ? 'Salvataggio...' : dirty ? 'Salva modifiche' : 'Salvato'}
+              </button>
+            </>
           )}
         </div>
       </div>
 
       {error && <p className="auth-error">{error}</p>}
+      {notice && (
+        <p className="import-notice">
+          {notice}{' '}
+          <button className="btn-link" type="button" onClick={() => setNotice('')}>
+            Ho capito
+          </button>
+        </p>
+      )}
 
       {banlistFormat !== 'none' && (
         illegalCards.length > 0 ? (

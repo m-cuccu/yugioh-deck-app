@@ -20,6 +20,7 @@ export default function DeckListPage() {
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -95,6 +96,7 @@ export default function DeckListPage() {
     if (!file) return;
 
     setError('');
+    setNotice('');
     try {
       const content = await file.text();
       const baseName = file.name.replace(/\.(json|ydk)$/i, '');
@@ -105,6 +107,15 @@ export default function DeckListPage() {
       const deck = await createDeck(user.id, parsed.name || baseName);
       await saveDeckCards(deck.id, parsed.cards);
       await reload();
+
+      const unresolved = parsed.unresolvedIds || [];
+      if (unresolved.length > 0) {
+        setNotice(
+          `Deck importato, ma ${unresolved.length} ${unresolved.length === 1 ? 'carta non è stata riconosciuta' : 'carte non sono state riconosciute'} ` +
+            `(${unresolved.join(', ')}): non sono presenti nel database delle carte, probabilmente perché troppo recenti. ` +
+            'Restano nel deck come segnaposto e puoi sostituirle a mano.'
+        );
+      }
     } catch (err) {
       setError('Import fallito: ' + err.message);
     }
@@ -134,6 +145,14 @@ export default function DeckListPage() {
       </div>
 
       {error && <p className="auth-error">{error}</p>}
+      {notice && (
+        <p className="import-notice">
+          {notice}{' '}
+          <button className="btn-link" type="button" onClick={() => setNotice('')}>
+            Ho capito
+          </button>
+        </p>
+      )}
 
       {decks.length > 0 && (
         <p className="visibility-hint">

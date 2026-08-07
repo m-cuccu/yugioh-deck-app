@@ -341,6 +341,17 @@ button {
   gap: 8px;
 }
 
+.import-notice {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
 .visibility-hint {
   font-size: 13px;
   color: var(--text-muted);
