@@ -16,6 +16,7 @@ import {
   saveDeckCards,
 } from '../lib/decksApi';
 import { applySuggestionToCards, sectionLabel } from '../lib/suggestions';
+import { SORT_OPTIONS, sortDeckCards } from '../lib/deckSort';
 import SuggestionCard from '../components/SuggestionCard';
 import CardDetailModal from '../components/CardDetailModal';
 import QuickSuggestModal from '../components/QuickSuggestModal';
@@ -23,7 +24,7 @@ import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } fr
 import {
   cardThumbnail,
   fetchCardArts,
-  fetchCardNamesByIds,
+  fetchCardsByIds,
   fetchCardSets,
   fetchRelatedCards,
   isExtraDeckCard,
@@ -56,6 +57,15 @@ export default function DeckEditorPage() {
 
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState({ main: [], extra: [], side: [] });
+  // dati completi delle carte (tipo, livello, attacco), usati per nomi e ordinamento
+  const [cardInfo, setCardInfo] = useState(new Map());
+  const [sortKey, setSortKey] = useState(() => {
+    try {
+      return localStorage.getItem('ygo-deck-sort') || 'manual';
+    } catch {
+      return 'manual';
+    }
+  });
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -143,8 +153,11 @@ export default function DeckEditorPage() {
     const ids = cardIdsKey.split(',').map(Number);
 
     let cancelled = false;
-    fetchCardNamesByIds(ids, lang).then((names) => {
-      if (cancelled || names.size === 0) return;
+    fetchCardsByIds(ids, lang).then((info) => {
+      if (cancelled || info.size === 0) return;
+      // gli stessi dati servono anche per l'ordinamento (tipo, livello, attacco)
+      setCardInfo(info);
+      const names = new Map([...info].map(([id, card]) => [id, card.name]));
       setCards((prev) => {
         let changed = false;
         const next = {};
@@ -231,6 +244,49 @@ export default function DeckEditorPage() {
     }
     return map;
   }, [cards]);
+
+  // Vista ordinata: non tocca lo stato, cosi' cambiare ordinamento non marca il deck
+  // come modificato. Al salvataggio si scrive proprio quest'ordine (vedi handleSave).
+  const sortedCards = useMemo(
+    () => ({
+      main: sortDeckCards(cards.main, sortKey, cardInfo),
+      extra: sortDeckCards(cards.extra, sortKey, cardInfo),
+      side: sortDeckCards(cards.side, sortKey, cardInfo),
+    }),
+    [cards, sortKey, cardInfo]
+  );
+
+  // Cambiare ordinamento riscrive subito il deck, cosi' l'ordine resta anche per chi lo guarda.
+  // Non si crea una versione nello storico: e' un riordino, le carte sono le stesse, e
+  // salvarne una a ogni cambio spingerebbe fuori le versioni che contano davvero.
+  async function changeSort(key) {
+    setSortKey(key);
+    try {
+      localStorage.setItem('ygo-deck-sort', key);
+    } catch {
+      // preferenza valida solo per la sessione
+    }
+
+    if (readOnly || key === 'manual' || !deck) return;
+
+    const reordered = {
+      main: sortDeckCards(cards.main, key, cardInfo),
+      extra: sortDeckCards(cards.extra, key, cardInfo),
+      side: sortDeckCards(cards.side, key, cardInfo),
+    };
+
+    setSortSaving(true);
+    setError('');
+    try {
+      await saveDeckCards(deckId, reordered);
+      setCards(reordered);
+      setDirty(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSortSaving(false);
+    }
+  }
 
   // carte che superano il limite consentito dalla banlist attiva
   const illegalCards = useMemo(() => {
@@ -450,10 +506,12 @@ export default function DeckEditorPage() {
     setSaving(true);
     setError('');
     try {
-      await saveDeckCards(deckId, cards);
+      // si salva l'ordine visualizzato: quello che vedi e' quello che resta nel deck
+      await saveDeckCards(deckId, sortedCards);
+      setCards(sortedCards);
       setDirty(false);
       // snapshot dopo il salvataggio, cosi' lo storico riflette le versioni effettive
-      await createDeckVersion(deckId, cards, 'Salvataggio');
+      await createDeckVersion(deckId, sortedCards, 'Salvataggio');
       await reloadVersions();
     } catch (err) {
       setError(err.message);
@@ -696,6 +754,22 @@ export default function DeckEditorPage() {
         </div>
       )}
 
+      <div className="deck-sort">
+        <label>
+          Ordina per
+          <select value={sortKey} onChange={(e) => changeSort(e.target.value)}>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!readOnly && sortKey !== 'manual' && (
+          <span className="deck-sort-hint">L'ordine viene reso permanente al salvataggio.</span>
+        )}
+      </div>
+
       {['main', 'extra', 'side'].map((section) => {
         const [min, max] = LIMITS[section];
         const total = cards[section].reduce((sum, c) => sum + c.quantity, 0);
@@ -708,11 +782,11 @@ export default function DeckEditorPage() {
                 {total} carte {min > 0 || max > 0 ? `(${min}-${max})` : ''}
               </span>
             </h3>
-            {cards[section].length === 0 ? (
+            {sortedCards[section].length === 0 ? (
               <p className="page-message">Nessuna carta.</p>
             ) : (
               <ul className="deck-card-grid">
-                {cards[section].map((c) => {
+                {sortedCards[section].map((c) => {
                   const rarityClass = c.rarity_label ? rarityToClass(c.rarity_label) : '';
                   const banStatus = statusOf(c.card_id);
                   const overLimit = c.quantity > maxCopiesForCard(c.card_id);

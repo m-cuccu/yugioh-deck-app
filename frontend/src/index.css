@@ -485,6 +485,36 @@ button {
   margin-bottom: 24px;
 }
 
+.deck-sort {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.deck-sort label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.deck-sort select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.deck-sort-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .count-ok { color: var(--ok); font-size: 14px; font-weight: 400; }
 .count-warning { color: var(--warn); font-size: 14px; font-weight: 400; }
 

@@ -125,20 +125,29 @@ export async function fetchCardDetails(cardId, lang) {
   return null;
 }
 
-// Nomi delle carte nella lingua scelta, a partire dagli id.
-// Serve a mostrare un deck salvato nella lingua corrente: i nomi in `deck_cards` sono
-// solo un'istantanea di quando la carta e' stata aggiunta.
-export async function fetchCardNamesByIds(ids, lang) {
+// Dati completi delle carte di un deck a partire dagli id, nella lingua scelta.
+// Serve sia a riallineare i nomi (in `deck_cards` sono solo un'istantanea di quando la
+// carta e' stata aggiunta) sia a ordinare per tipo, livello o attacco.
+// Le carte prive di record nella lingua scelta si recuperano dall'inglese.
+export async function fetchCardsByIds(ids, lang) {
   const unique = [...new Set(ids)].filter((id) => id != null);
   if (unique.length === 0) return new Map();
 
-  const url = `${BASE_URL}?id=${unique.join(',')}${langParam(lang)}`;
-  const res = await fetch(url);
-  if (!res.ok) return new Map(); // fallback silenzioso: si tengono i nomi salvati
-  const json = await res.json();
+  const fetchIn = async (l) => {
+    const res = await fetch(`${BASE_URL}?id=${unique.join(',')}${langParam(l)}`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  };
+
+  const [localized, english] =
+    !lang || lang === 'en'
+      ? [[], await fetchIn('en').catch(() => [])]
+      : await Promise.all([fetchIn(lang).catch(() => []), fetchIn('en').catch(() => [])]);
 
   const map = new Map();
-  for (const card of json.data || []) map.set(card.id, card.name);
+  for (const card of english) map.set(card.id, card);
+  for (const card of localized) map.set(card.id, card);
   return map;
 }
 
