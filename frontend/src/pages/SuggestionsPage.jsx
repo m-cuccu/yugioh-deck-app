@@ -123,7 +123,17 @@ export default function SuggestionsPage() {
           ) : (
             <ul className="suggestion-list">
               {pending.map((s) => (
-                <SuggestionCard key={s.id} suggestion={s} showDeck>
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  showDeck
+                  isDeckOwner
+                  onThreadRead={refreshUnread}
+                  onThreadChanged={() => {
+                    reload();
+                    refreshUnread();
+                  }}
+                >
                   {rejectingId === s.id ? (
                     <div className="suggestion-reject-form">
                       <input
@@ -172,8 +182,8 @@ export default function SuggestionsPage() {
                       >
                         Rifiuta
                       </button>
-                      <Link className="btn-link" to={`/deck/${s.deck_id}`}>
-                        Apri deck
+                      <Link className="btn-link" to={`/deck/${s.deck_id}?s=${s.id}`}>
+                        Apri nel deck
                       </Link>
                     </div>
                   )}
@@ -187,7 +197,23 @@ export default function SuggestionsPage() {
               <h3 className="section-subtitle">Già gestiti</h3>
               <ul className="suggestion-list">
                 {handled.map((s) => (
-                  <SuggestionCard key={s.id} suggestion={s} showDeck />
+                  <SuggestionCard
+                    key={s.id}
+                    suggestion={s}
+                    showDeck
+                    isDeckOwner
+                    onThreadRead={refreshUnread}
+                    onThreadChanged={() => {
+                      reload();
+                      refreshUnread();
+                    }}
+                  >
+                    <div className="suggestion-actions">
+                      <Link className="btn-link" to={`/deck/${s.deck_id}?s=${s.id}`}>
+                        Apri nel deck
+                      </Link>
+                    </div>
+                  </SuggestionCard>
                 ))}
               </ul>
             </>
@@ -202,7 +228,23 @@ export default function SuggestionsPage() {
           ) : (
             <ul className="suggestion-list">
               {sent.map((s) => (
-                <SuggestionCard key={s.id} suggestion={s} showAuthor={false} showDeck />
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  showAuthor={false}
+                  showDeck
+                  onThreadRead={refreshUnread}
+                  onThreadChanged={() => {
+                    reload();
+                    refreshUnread();
+                  }}
+                >
+                  <div className="suggestion-actions">
+                    <Link className="btn-link" to={`/deck/${s.deck_id}?s=${s.id}`}>
+                      Apri nel deck
+                    </Link>
+                  </div>
+                </SuggestionCard>
               ))}
             </ul>
           )}

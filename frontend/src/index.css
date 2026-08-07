@@ -1538,6 +1538,114 @@ button {
   padding: 6px 12px;
 }
 
+/* --- Discussione su un suggerimento --- */
+
+.suggestion-item.is-highlighted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.suggestion-unread {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.thread-toggle {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.thread {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.thread-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.thread-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.thread-message {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.thread-message.is-mine {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.thread-message-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.thread-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.thread-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.thread-delete {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.thread-body {
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.thread-form {
+  display: flex;
+  gap: 8px;
+}
+
+.thread-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.thread-form button {
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
 .nav-badge {
   display: inline-block;
   margin-left: 6px;

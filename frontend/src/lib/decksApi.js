@@ -148,14 +148,49 @@ export async function listPublicDecksByUser(userId) {
   return data.map((d) => ({ ...d, counts: countBySection(d.deck_cards) }));
 }
 
-export async function listSuggestions(deckId) {
+export async function listSuggestions(deckId, userId) {
   const { data, error } = await supabase
     .from('card_suggestions')
-    .select('*, profiles(username)')
+    .select(`*, ${SUGGESTION_AUTHOR}, ${THREAD_FIELDS}`)
     .eq('deck_id', deckId)
     .order('created_at', { ascending: false });
   if (error) throw error;
+  return userId ? data.map((s) => withThreadInfo(s, userId)) : data;
+}
+
+export async function listSuggestionMessages(suggestionId) {
+  const { data, error } = await supabase
+    .from('suggestion_messages')
+    .select('*, profiles(username)')
+    .eq('suggestion_id', suggestionId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
   return data;
+}
+
+export async function postSuggestionMessage(suggestionId, authorId, body) {
+  const text = body.trim();
+  if (!text) return;
+  const { error } = await supabase
+    .from('suggestion_messages')
+    .insert({ suggestion_id: suggestionId, author_id: authorId, body: text });
+  if (error) throw error;
+}
+
+export async function deleteSuggestionMessage(messageId) {
+  const { error } = await supabase.from('suggestion_messages').delete().eq('id', messageId);
+  if (error) throw error;
+}
+
+// Segna la discussione come letta fino a ora
+export async function markThreadRead(suggestionId, userId) {
+  const { error } = await supabase
+    .from('suggestion_reads')
+    .upsert(
+      { suggestion_id: suggestionId, user_id: userId, last_read_at: new Date().toISOString() },
+      { onConflict: 'suggestion_id,user_id' }
+    );
+  if (error) throw error;
 }
 
 // payload.kind: 'replace' | 'add' | 'remove'
@@ -195,28 +230,53 @@ export async function respondToSuggestion(suggestionId, status, responseComment)
   if (error) throw error;
 }
 
+// Campi della discussione: messaggi (solo i metadati, il testo si carica aprendo il thread)
+// e il mio segnaposto di lettura, per capire quali risposte sono nuove.
+const THREAD_FIELDS = 'suggestion_messages(id, created_at, author_id), suggestion_reads(user_id, last_read_at)';
+
+// suggestion_reads collega card_suggestions a profiles anche per un'altra via, quindi
+// senza indicare il vincolo PostgREST non sa quale relazione usare e risponde 300.
+// L'alias esplicito garantisce che la chiave nella risposta resti `profiles`.
+const SUGGESTION_AUTHOR = 'profiles:profiles!card_suggestions_author_id_fkey(username)';
+
 // Tutti i suggerimenti ricevuti sui deck dell'utente (per la pagina dedicata)
 export async function listIncomingSuggestions(userId) {
   const { data, error } = await supabase
     .from('card_suggestions')
-    .select('*, profiles(username), decks!inner(id, name, user_id)')
+    .select(`*, ${SUGGESTION_AUTHOR}, decks!inner(id, name, user_id), ${THREAD_FIELDS}`)
     .eq('decks.user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data;
+  return data.map((s) => withThreadInfo(s, userId));
 }
 
 // Suggerimenti inviati dall'utente ad altri, con il relativo esito
 export async function listSentSuggestions(userId) {
   const { data, error } = await supabase
     .from('card_suggestions')
-    .select('*, decks(id, name)')
+    .select(`*, ${SUGGESTION_AUTHOR}, decks(id, name), ${THREAD_FIELDS}`)
     .eq('author_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data;
+  return data.map((s) => withThreadInfo(s, userId));
 }
 
+// Conteggio dei messaggi altrui successivi alla mia ultima lettura.
+// Si calcola qui invece che nel database per non introdurre una funzione SQL dedicata.
+function withThreadInfo(suggestion, userId) {
+  const messages = suggestion.suggestion_messages || [];
+  const myRead = (suggestion.suggestion_reads || []).find((r) => r.user_id === userId);
+  const since = myRead ? new Date(myRead.last_read_at).getTime() : 0;
+
+  const unreadMessages = messages.filter(
+    (m) => m.author_id !== userId && new Date(m.created_at).getTime() > since
+  ).length;
+
+  return { ...suggestion, messageCount: messages.length, unreadMessages };
+}
+
+// Il badge somma due cose: i suggerimenti nuovi sui miei deck e le risposte non lette
+// nelle discussioni a cui partecipo (sia come proprietario che come autore).
 export async function countUnreadSuggestions(userId) {
   const { count, error } = await supabase
     .from('card_suggestions')
@@ -225,7 +285,17 @@ export async function countUnreadSuggestions(userId) {
     .eq('status', 'pending')
     .eq('seen_by_owner', false);
   if (error) throw error;
-  return count || 0;
+
+  const [incoming, sent] = await Promise.all([
+    listIncomingSuggestions(userId).catch(() => []),
+    listSentSuggestions(userId).catch(() => []),
+  ]);
+
+  const threads = new Map();
+  for (const s of [...incoming, ...sent]) threads.set(s.id, s.unreadMessages || 0);
+  const unreadReplies = [...threads.values()].reduce((sum, n) => sum + (n > 0 ? 1 : 0), 0);
+
+  return (count || 0) + unreadReplies;
 }
 
 export async function markSuggestionsSeen(suggestionIds) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
@@ -49,6 +49,9 @@ export default function DeckEditorPage() {
   const { refreshUnread } = useNotifications();
   const { statusOf, maxCopiesForCard, format: banlistFormat } = useBanlist();
   const navigate = useNavigate();
+  // ?s=<id> arriva dalla pagina Suggerimenti: evidenzia quel suggerimento e apre la discussione
+  const [searchParams] = useSearchParams();
+  const focusedSuggestionId = searchParams.get('s');
 
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState({ main: [], extra: [], side: [] });
@@ -94,6 +97,8 @@ export default function DeckEditorPage() {
   const [restoringId, setRestoringId] = useState(null);
 
   const importInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
+  const hasScrolledRef = useRef(false);
   const [notice, setNotice] = useState('');
   const [importing, setImporting] = useState(false);
 
@@ -156,7 +161,7 @@ export default function DeckEditorPage() {
 
   function reloadSuggestions() {
     setSuggestionsLoading(true);
-    return listSuggestions(deckId)
+    return listSuggestions(deckId, user.id)
       .then((data) => setSuggestions(data))
       .catch((err) => setError(err.message))
       .finally(() => setSuggestionsLoading(false));
@@ -173,6 +178,16 @@ export default function DeckEditorPage() {
     reloadVersions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckId]);
+
+  // Arrivando da "Apri nel deck" si porta la vista sulla discussione indicata.
+  // Una sola volta: le immagini delle carte si caricano dopo e spostano la pagina,
+  // quindi ripetere lo scorrimento darebbe l'impressione di uno sfarfallio.
+  useEffect(() => {
+    if (!focusedSuggestionId || suggestionsLoading || !suggestionsRef.current) return;
+    if (hasScrolledRef.current) return;
+    hasScrolledRef.current = true;
+    suggestionsRef.current.scrollIntoView({ block: 'start' });
+  }, [focusedSuggestionId, suggestionsLoading]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -788,7 +803,7 @@ export default function DeckEditorPage() {
         );
       })}
 
-      <section className="suggestions-section">
+      <section className="suggestions-section" ref={suggestionsRef}>
         <h3>Suggerimenti{suggestions.length > 0 ? ` (${suggestions.length})` : ''}</h3>
 
         {readOnly && (
@@ -900,7 +915,18 @@ export default function DeckEditorPage() {
             {suggestions.map((s) => {
               const status = s.status || 'pending';
               return (
-                <SuggestionCard key={s.id} suggestion={s}>
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  isDeckOwner={!readOnly}
+                  highlighted={s.id === focusedSuggestionId}
+                  defaultThreadOpen={s.id === focusedSuggestionId}
+                  onThreadRead={refreshUnread}
+                  onThreadChanged={() => {
+                    reloadSuggestions();
+                    refreshUnread();
+                  }}
+                >
                   {!readOnly && status === 'pending' && (
                     respondingId === s.id ? (
                       <div className="suggestion-reject-form">

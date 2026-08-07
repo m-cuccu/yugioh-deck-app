@@ -307,3 +307,81 @@ create policy "Solo il proprietario scrive nello storico"
         and decks.user_id = auth.uid()
     )
   );
+
+-- 10. Discussione su un suggerimento.
+-- La conversazione e' aperta a chiunque possa vedere il deck, non solo a chi ha proposto
+-- e al proprietario: i deck pubblici hanno gia' i suggerimenti visibili a tutti.
+create table if not exists suggestion_messages (
+  id uuid primary key default gen_random_uuid(),
+  suggestion_id uuid not null references card_suggestions(id) on delete cascade,
+  author_id uuid not null references profiles(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_suggestion_messages_suggestion
+  on suggestion_messages(suggestion_id, created_at);
+
+alter table suggestion_messages enable row level security;
+
+drop policy if exists "Messaggi visibili se il deck e pubblico o proprio" on suggestion_messages;
+create policy "Messaggi visibili se il deck e pubblico o proprio"
+  on suggestion_messages for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from card_suggestions cs
+      join decks d on d.id = cs.deck_id
+      where cs.id = suggestion_messages.suggestion_id
+        and (d.is_public = true or d.user_id = auth.uid())
+    )
+  );
+
+drop policy if exists "Si scrive solo dove si vede la discussione" on suggestion_messages;
+create policy "Si scrive solo dove si vede la discussione"
+  on suggestion_messages for insert
+  to authenticated
+  with check (
+    author_id = auth.uid()
+    and exists (
+      select 1
+      from card_suggestions cs
+      join decks d on d.id = cs.deck_id
+      where cs.id = suggestion_messages.suggestion_id
+        and (d.is_public = true or d.user_id = auth.uid())
+    )
+  );
+
+drop policy if exists "Autore del messaggio o proprietario del deck lo eliminano" on suggestion_messages;
+create policy "Autore del messaggio o proprietario del deck lo eliminano"
+  on suggestion_messages for delete
+  to authenticated
+  using (
+    author_id = auth.uid()
+    or exists (
+      select 1
+      from card_suggestions cs
+      join decks d on d.id = cs.deck_id
+      where cs.id = suggestion_messages.suggestion_id
+        and d.user_id = auth.uid()
+    )
+  );
+
+-- Segnaposto di lettura per discussione, per sapere quali risposte sono nuove.
+-- Serve a entrambe le parti, non solo al proprietario del deck come seen_by_owner.
+create table if not exists suggestion_reads (
+  suggestion_id uuid not null references card_suggestions(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (suggestion_id, user_id)
+);
+
+alter table suggestion_reads enable row level security;
+
+drop policy if exists "Ognuno gestisce i propri segnaposto di lettura" on suggestion_reads;
+create policy "Ognuno gestisce i propri segnaposto di lettura"
+  on suggestion_reads for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
