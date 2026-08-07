@@ -102,6 +102,8 @@ button {
   text-decoration: none;
   padding: 6px 10px;
   border-radius: 8px;
+  /* senza questo su schermi stretti "I miei deck" va a capo una parola per riga */
+  white-space: nowrap;
 }
 
 .navbar-links a.active {
@@ -2023,5 +2025,57 @@ button {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+  }
+}
+
+/* Su telefono la barra in alto non ci sta su una riga: le voci di menu finiscono su una
+   riga propria scorrevole in orizzontale, invece di essere compresse e andare a capo. */
+@media (max-width: 720px) {
+  .navbar {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .navbar-brand {
+    margin-right: 0;
+  }
+
+  .navbar-links {
+    order: 3;
+    flex: 1 0 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .navbar-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navbar-user {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 6px;
+  }
+
+  /* Il titolo con flex:1 veniva schiacciato dai pulsanti accanto e spezzato a meta' */
+  .page-header h2 {
+    flex: 1 0 100%;
+  }
+
+  .page-actions,
+  .editor-actions {
+    width: 100%;
+  }
+
+  .page-actions button,
+  .editor-actions button {
+    flex: 1;
+    white-space: nowrap;
+  }
+
+  .app-main {
+    padding: 12px;
   }
 }
