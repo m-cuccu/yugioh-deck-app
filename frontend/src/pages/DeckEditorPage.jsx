@@ -18,6 +18,7 @@ import {
 import { applySuggestionToCards, sectionLabel } from '../lib/suggestions';
 import SuggestionCard from '../components/SuggestionCard';
 import CardDetailModal from '../components/CardDetailModal';
+import QuickSuggestModal from '../components/QuickSuggestModal';
 import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } from '../lib/deckIO';
 import {
   cardThumbnail,
@@ -89,6 +90,8 @@ export default function DeckEditorPage() {
 
   // scheda dettaglio: { card } se abbiamo gia' i dati completi, { cardId } se vanno recuperati
   const [cardDetail, setCardDetail] = useState(null);
+  // suggerimento rapido su una carta del deck altrui: { card_id, card_name, section, quantity }
+  const [quickSuggestTarget, setQuickSuggestTarget] = useState(null);
 
   const [respondingId, setRespondingId] = useState(null); // suggerimento a cui si sta rispondendo
   const [responseComment, setResponseComment] = useState('');
@@ -718,9 +721,16 @@ export default function DeckEditorPage() {
                     {readOnly && <span className="deck-card-qty-badge">×{c.quantity}</span>}
                     {c.card_image && (
                       readOnly ? (
-                        <span className={`card-art-wrap ${rarityClass}`} title={c.rarity_label || undefined}>
-                          <img src={c.card_image} alt={c.card_name} loading="lazy" />
-                        </span>
+                        <button
+                          type="button"
+                          className="art-picker-trigger"
+                          onClick={() => setQuickSuggestTarget({ ...c, section })}
+                          title="Suggerisci una modifica su questa carta"
+                        >
+                          <span className={`card-art-wrap ${rarityClass}`}>
+                            <img src={c.card_image} alt={c.card_name} loading="lazy" />
+                          </span>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -755,6 +765,15 @@ export default function DeckEditorPage() {
                     >
                       ℹ️ Effetto
                     </button>
+                    {readOnly && (
+                      <button
+                        type="button"
+                        className="related-cards-trigger is-suggest"
+                        onClick={() => setQuickSuggestTarget({ ...c, section })}
+                      >
+                        💡 Suggerisci
+                      </button>
+                    )}
                     {!readOnly && (
                       <div className="deck-card-tile-controls">
                         <button type="button" onClick={() => changeQuantity(section, c.card_id, -1)}>-</button>
@@ -1184,6 +1203,18 @@ export default function DeckEditorPage() {
           card={cardDetail.card}
           cardId={cardDetail.cardId}
           onClose={() => setCardDetail(null)}
+        />
+      )}
+
+      {quickSuggestTarget && (
+        <QuickSuggestModal
+          deckId={deckId}
+          target={quickSuggestTarget}
+          onClose={() => setQuickSuggestTarget(null)}
+          onCreated={() => {
+            reloadSuggestions();
+            setNotice('Suggerimento inviato. Lo trovi in fondo alla pagina e in "Suggerimenti".');
+          }}
         />
       )}
     </div>

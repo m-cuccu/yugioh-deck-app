@@ -575,6 +575,25 @@ button {
   color: var(--text-muted);
 }
 
+.related-cards-trigger.is-suggest {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.quick-suggest-target {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Il modale non scorre insieme ai risultati: li si tiene in flusso invece che sovrapposti */
+.quick-suggest-results {
+  position: static;
+  max-height: 240px;
+  box-shadow: none;
+}
+
 .related-cards-list {
   list-style: none;
   margin: 0;
