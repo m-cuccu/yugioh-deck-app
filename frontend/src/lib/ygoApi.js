@@ -80,13 +80,29 @@ export async function fetchRelatedCards(cardName, lang) {
   const archetype = card?.archetype;
   if (!archetype) return [];
 
-  const res = await fetch(
-    `${BASE_URL}?archetype=${encodeURIComponent(archetype)}&num=25&offset=0${langParam(lang)}`
-  );
-  if (res.status === 400) return [];
-  if (!res.ok) throw new Error('Impossibile recuperare le carte correlate');
-  const json = await res.json();
-  return (json.data || []).filter((c) => c.id !== card.id);
+  const fetchIn = async (l) => {
+    const res = await fetch(
+      `${BASE_URL}?archetype=${encodeURIComponent(archetype)}&num=25&offset=0${langParam(l)}`
+    );
+    if (!res.ok) return []; // 400 = nessuna carta dell'archetipo in quella lingua
+    const json = await res.json();
+    return json.data || [];
+  };
+
+  // Interi archetipi possono non avere alcuna carta tradotta (es. "Light and Darkness Ritual"):
+  // chiedendo solo in italiano il risultato sarebbe vuoto e sembrerebbe che non ci siano correlate.
+  let cards;
+  if (!lang || lang === 'en') {
+    cards = await fetchIn('en');
+  } else {
+    const [localized, english] = await Promise.all([fetchIn(lang), fetchIn('en')]);
+    const byId = new Map();
+    for (const c of english) byId.set(c.id, c);
+    for (const c of localized) byId.set(c.id, c);
+    cards = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return cards.filter((c) => c.id !== card.id);
 }
 
 // Elenco delle edizioni (set + rarita') in cui una carta e' stata stampata.
