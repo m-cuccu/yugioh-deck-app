@@ -385,3 +385,116 @@ create policy "Ognuno gestisce i propri segnaposto di lettura"
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+-- 11. Annunci "AAA Cercasi": chi cerca una carta nella vita reale pubblica un annuncio,
+-- gli altri possono dichiarare di averla e discuterne. Un annuncio = una carta,
+-- cosi' il pulsante "ce l'ho" si riferisce sempre a una carta precisa.
+create table if not exists wanted_posts (
+  id uuid primary key default gen_random_uuid(),
+  author_id uuid not null references profiles(id) on delete cascade,
+  card_id integer not null,
+  card_name text not null,
+  card_image text,
+  quantity integer not null default 1 check (quantity > 0),
+  note text,
+  status text not null default 'open' check (status in ('open', 'closed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_wanted_posts_status on wanted_posts(status, created_at desc);
+create index if not exists idx_wanted_posts_author on wanted_posts(author_id);
+
+alter table wanted_posts enable row level security;
+
+drop policy if exists "Gli annunci sono visibili a tutti gli utenti" on wanted_posts;
+create policy "Gli annunci sono visibili a tutti gli utenti"
+  on wanted_posts for select
+  to authenticated
+  using (true);
+
+drop policy if exists "Si pubblicano solo annunci propri" on wanted_posts;
+create policy "Si pubblicano solo annunci propri"
+  on wanted_posts for insert
+  to authenticated
+  with check (author_id = auth.uid());
+
+drop policy if exists "Solo l'autore modifica il proprio annuncio" on wanted_posts;
+create policy "Solo l'autore modifica il proprio annuncio"
+  on wanted_posts for update
+  to authenticated
+  using (author_id = auth.uid())
+  with check (author_id = auth.uid());
+
+drop policy if exists "Solo l'autore elimina il proprio annuncio" on wanted_posts;
+create policy "Solo l'autore elimina il proprio annuncio"
+  on wanted_posts for delete
+  to authenticated
+  using (author_id = auth.uid());
+
+-- Chi dichiara di avere la carta. Una sola dichiarazione per persona per annuncio.
+create table if not exists wanted_offers (
+  post_id uuid not null references wanted_posts(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+alter table wanted_offers enable row level security;
+
+drop policy if exists "Le disponibilita sono visibili a tutti gli utenti" on wanted_offers;
+create policy "Le disponibilita sono visibili a tutti gli utenti"
+  on wanted_offers for select
+  to authenticated
+  using (true);
+
+drop policy if exists "Ognuno dichiara solo per se stesso" on wanted_offers;
+create policy "Ognuno dichiara solo per se stesso"
+  on wanted_offers for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Discussione sotto l'annuncio, aperta a tutti come per i suggerimenti
+create table if not exists wanted_messages (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references wanted_posts(id) on delete cascade,
+  author_id uuid not null references profiles(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_wanted_messages_post on wanted_messages(post_id, created_at);
+
+alter table wanted_messages enable row level security;
+
+drop policy if exists "I messaggi degli annunci sono visibili a tutti" on wanted_messages;
+create policy "I messaggi degli annunci sono visibili a tutti"
+  on wanted_messages for select
+  to authenticated
+  using (true);
+
+drop policy if exists "Si scrive solo a proprio nome" on wanted_messages;
+create policy "Si scrive solo a proprio nome"
+  on wanted_messages for insert
+  to authenticated
+  with check (author_id = auth.uid());
+
+drop policy if exists "Autore del messaggio o dell annuncio lo eliminano" on wanted_messages;
+create policy "Autore del messaggio o dell annuncio lo eliminano"
+  on wanted_messages for delete
+  to authenticated
+  using (
+    author_id = auth.uid()
+    or exists (
+      select 1 from wanted_posts p
+      where p.id = wanted_messages.post_id
+        and p.author_id = auth.uid()
+    )
+  );
+
+drop trigger if exists trg_wanted_posts_updated_at on wanted_posts;
+create trigger trg_wanted_posts_updated_at
+  before update on wanted_posts
+  for each row
+  execute function set_updated_at();

@@ -66,6 +66,7 @@ export default function DeckEditorPage() {
       return 'manual';
     }
   });
+  const [sortSaving, setSortSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -757,7 +758,11 @@ export default function DeckEditorPage() {
       <div className="deck-sort">
         <label>
           Ordina per
-          <select value={sortKey} onChange={(e) => changeSort(e.target.value)}>
+          <select
+            value={sortKey}
+            onChange={(e) => changeSort(e.target.value)}
+            disabled={sortSaving}
+          >
             {SORT_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>
                 {o.label}
@@ -765,8 +770,9 @@ export default function DeckEditorPage() {
             ))}
           </select>
         </label>
-        {!readOnly && sortKey !== 'manual' && (
-          <span className="deck-sort-hint">L'ordine viene reso permanente al salvataggio.</span>
+        {sortSaving && <span className="deck-sort-hint">Salvataggio ordine...</span>}
+        {!readOnly && !sortSaving && sortKey !== 'manual' && (
+          <span className="deck-sort-hint">L'ordine è salvato nel deck.</span>
         )}
       </div>
 

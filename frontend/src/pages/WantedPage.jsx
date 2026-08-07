@@ -1,0 +1,280 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  createWantedPost,
+  deleteWantedPost,
+  listWantedPosts,
+  setWantedOffer,
+  updateWantedPost,
+} from '../lib/wantedApi';
+import { cardThumbnail, searchCards } from '../lib/ygoApi';
+import WantedPostCard from '../components/WantedPostCard';
+
+export default function WantedPage() {
+  const { user } = useAuth();
+  const { lang } = useLanguage();
+
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const [filter, setFilter] = useState('open'); // 'open' | 'all' | 'mine'
+
+  // form nuovo annuncio / modifica
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [note, setNote] = useState('');
+
+  function reload() {
+    setLoading(true);
+    const opts =
+      filter === 'mine' ? { status: 'all', mineOnly: true } : { status: filter === 'all' ? 'all' : 'open' };
+    listWantedPosts(user.id, opts)
+      .then(setPosts)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, filter]);
+
+  useEffect(() => {
+    if (!query.trim() || selectedCard) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      searchCards(query, lang)
+        .then((data) => { if (!cancelled) setResults(data.slice(0, 25)); })
+        .catch(() => { if (!cancelled) setResults([]); })
+        .finally(() => { if (!cancelled) setSearching(false); });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, lang, selectedCard]);
+
+  function resetForm() {
+    setFormOpen(false);
+    setEditingId(null);
+    setQuery('');
+    setResults([]);
+    setSelectedCard(null);
+    setQuantity(1);
+    setNote('');
+  }
+
+  function startEdit(post) {
+    setEditingId(post.id);
+    setFormOpen(true);
+    // in modifica la carta non si cambia: si aggiustano copie e nota
+    setSelectedCard({ id: post.card_id, name: post.card_name });
+    setQuery(post.card_name);
+    setQuantity(post.quantity);
+    setNote(post.note || '');
+    window.scrollTo({ top: 0 });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!selectedCard) return;
+
+    setBusy(true);
+    setError('');
+    try {
+      if (editingId) {
+        await updateWantedPost(editingId, { quantity, note: note.trim() || null });
+      } else {
+        await createWantedPost(user.id, {
+          cardId: selectedCard.id,
+          cardName: selectedCard.name,
+          cardImage: cardThumbnail(selectedCard),
+          quantity,
+          note,
+        });
+      }
+      resetForm();
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleOffer(post) {
+    setBusy(true);
+    setError('');
+    try {
+      await setWantedOffer(post.id, user.id, !post.iHaveIt);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleStatus(post) {
+    setBusy(true);
+    setError('');
+    try {
+      await updateWantedPost(post.id, { status: post.status === 'open' ? 'closed' : 'open' });
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(post) {
+    if (!window.confirm(`Eliminare l'annuncio per "${post.card_name}"? L'operazione non è reversibile.`)) {
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await deleteWantedPost(post.id);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h2>AAA Cercasi</h2>
+        <div className="page-actions">
+          <button
+            className="btn-primary"
+            type="button"
+            onClick={() => (formOpen ? resetForm() : setFormOpen(true))}
+          >
+            {formOpen ? 'Annulla' : '+ Nuovo annuncio'}
+          </button>
+        </div>
+      </div>
+
+      <p className="visibility-hint">
+        Cerchi una carta vera per completare un mazzo? Pubblica un annuncio: chi ce l'ha può
+        segnalarsi e mettersi d'accordo con te nella discussione.
+      </p>
+
+      {error && <p className="auth-error">{error}</p>}
+
+      {formOpen && (
+        <form className="suggestion-form wanted-form" onSubmit={handleSubmit}>
+          <label>
+            Carta cercata
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (!editingId) setSelectedCard(null);
+              }}
+              placeholder="Cerca una carta..."
+              disabled={Boolean(editingId)}
+            />
+          </label>
+          {editingId && (
+            <p className="deck-sort-hint">
+              La carta non si può cambiare: elimina l'annuncio e creane uno nuovo.
+            </p>
+          )}
+          {searching && <p className="page-message">Ricerca...</p>}
+          {!selectedCard && results.length > 0 && (
+            <ul className="search-results quick-suggest-results">
+              {results.map((card) => (
+                <li
+                  key={card.id}
+                  className="search-result"
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setQuery(card.name);
+                    setResults([]);
+                  }}
+                >
+                  {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
+                  <span>{card.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <label>
+            Copie cercate
+            <input
+              type="number"
+              min={1}
+              max={9}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+            />
+          </label>
+
+          <label>
+            Nota (opzionale)
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Es. zona, condizioni accettate, scambio o acquisto"
+            />
+          </label>
+
+          <button className="btn-primary" type="submit" disabled={busy || !selectedCard}>
+            {editingId ? 'Salva modifiche' : 'Pubblica annuncio'}
+          </button>
+        </form>
+      )}
+
+      <div className="suggest-kind-tabs wanted-filters">
+        <button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>
+          Aperti
+        </button>
+        <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+          Tutti
+        </button>
+        <button type="button" className={filter === 'mine' ? 'active' : ''} onClick={() => setFilter('mine')}>
+          I miei
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="page-message">Caricamento annunci...</p>
+      ) : posts.length === 0 ? (
+        <p className="page-message">
+          {filter === 'mine' ? 'Non hai pubblicato annunci.' : 'Nessun annuncio al momento.'}
+        </p>
+      ) : (
+        <ul className="wanted-list">
+          {posts.map((post) => (
+            <WantedPostCard
+              key={post.id}
+              post={post}
+              busy={busy}
+              onToggleOffer={handleToggleOffer}
+              onEdit={startEdit}
+              onToggleStatus={handleToggleStatus}
+              onDelete={handleDelete}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

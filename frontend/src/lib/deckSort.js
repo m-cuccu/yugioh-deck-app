@@ -2,7 +2,9 @@
 // I dati usati (tipo, livello, attacco) arrivano da fetchCardsByIds, non da deck_cards.
 
 export const SORT_OPTIONS = [
-  { key: 'manual', label: 'Ordine di inserimento' },
+  // Una volta applicato un ordinamento il deck viene riscritto, quindi l'ordine di
+  // inserimento originale non esiste piu': questa voce mostra l'ordine attualmente salvato.
+  { key: 'manual', label: 'Ordine salvato nel deck' },
   { key: 'type', label: 'Tipo (mostri, magie, trappole)' },
   { key: 'name', label: 'Nome (A-Z)' },
   { key: 'level', label: 'Livello / Rank' },
