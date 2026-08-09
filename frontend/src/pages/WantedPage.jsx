@@ -11,6 +11,17 @@ import {
 import { cardThumbnail, searchCards } from '../lib/ygoApi';
 import WantedPostCard from '../components/WantedPostCard';
 
+const MIN_QUANTITY = 1;
+const MAX_QUANTITY = 9;
+
+// Il campo resta una stringa mentre si digita (per poterlo svuotare): qui si riporta
+// a un numero valido, all'uscita dal campo e prima di salvare.
+function clampQuantity(value) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < MIN_QUANTITY) return MIN_QUANTITY;
+  return Math.min(n, MAX_QUANTITY);
+}
+
 export default function WantedPage() {
   const { user } = useAuth();
   const { lang } = useLanguage();
@@ -29,7 +40,7 @@ export default function WantedPage() {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(String(MIN_QUANTITY));
   const [note, setNote] = useState('');
 
   function reload() {
@@ -69,7 +80,7 @@ export default function WantedPage() {
     setQuery('');
     setResults([]);
     setSelectedCard(null);
-    setQuantity(1);
+    setQuantity(String(MIN_QUANTITY));
     setNote('');
   }
 
@@ -79,7 +90,7 @@ export default function WantedPage() {
     // in modifica la carta non si cambia: si aggiustano copie e nota
     setSelectedCard({ id: post.card_id, name: post.card_name });
     setQuery(post.card_name);
-    setQuantity(post.quantity);
+    setQuantity(String(post.quantity));
     setNote(post.note || '');
     window.scrollTo({ top: 0 });
   }
@@ -88,17 +99,20 @@ export default function WantedPage() {
     e.preventDefault();
     if (!selectedCard) return;
 
+    // il campo e' una stringa libera mentre si digita: si valida qui, non a ogni battuta
+    const qty = clampQuantity(quantity);
+
     setBusy(true);
     setError('');
     try {
       if (editingId) {
-        await updateWantedPost(editingId, { quantity, note: note.trim() || null });
+        await updateWantedPost(editingId, { quantity: qty, note: note.trim() || null });
       } else {
         await createWantedPost(user.id, {
           cardId: selectedCard.id,
           cardName: selectedCard.name,
           cardImage: cardThumbnail(selectedCard),
-          quantity,
+          quantity: qty,
           note,
         });
       }
@@ -219,10 +233,13 @@ export default function WantedPage() {
             Copie cercate
             <input
               type="number"
-              min={1}
-              max={9}
+              min={MIN_QUANTITY}
+              max={MAX_QUANTITY}
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+              // si tiene il testo cosi' com'e' mentre si digita: normalizzando a ogni battuta
+              // il campo non si puo' svuotare per riscriverlo, e torna sempre a 1
+              onChange={(e) => setQuantity(e.target.value)}
+              onBlur={() => setQuantity(String(clampQuantity(quantity)))}
             />
           </label>
 
