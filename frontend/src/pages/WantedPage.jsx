@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -33,6 +34,11 @@ export default function WantedPage() {
 
   const [filter, setFilter] = useState('open'); // 'open' | 'all' | 'mine'
 
+  // ?post=<id> arriva da un annuncio condiviso: si mostra quello, anche se nel frattempo
+  // e' stato chiuso, altrimenti chi apre il link non troverebbe nulla.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sharedPostId = searchParams.get('post');
+
   // form nuovo annuncio / modifica
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -45,8 +51,11 @@ export default function WantedPage() {
 
   function reload() {
     setLoading(true);
-    const opts =
-      filter === 'mine' ? { status: 'all', mineOnly: true } : { status: filter === 'all' ? 'all' : 'open' };
+    const opts = sharedPostId
+      ? { status: 'all' }
+      : filter === 'mine'
+        ? { status: 'all', mineOnly: true }
+        : { status: filter === 'all' ? 'all' : 'open' };
     listWantedPosts(user.id, opts)
       .then(setPosts)
       .catch((err) => setError(err.message))
@@ -56,7 +65,9 @@ export default function WantedPage() {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id, filter]);
+  }, [user.id, filter, sharedPostId]);
+
+  const visiblePosts = sharedPostId ? posts.filter((p) => p.id === sharedPostId) : posts;
 
   useEffect(() => {
     if (!query.trim() || selectedCard) {
@@ -259,31 +270,45 @@ export default function WantedPage() {
         </form>
       )}
 
-      <div className="suggest-kind-tabs wanted-filters">
-        <button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>
-          Aperti
-        </button>
-        <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
-          Tutti
-        </button>
-        <button type="button" className={filter === 'mine' ? 'active' : ''} onClick={() => setFilter('mine')}>
-          I miei
-        </button>
-      </div>
+      {sharedPostId ? (
+        <p className="visibility-hint">
+          Stai guardando un annuncio condiviso.{' '}
+          <button className="btn-link" type="button" onClick={() => setSearchParams({})}>
+            Mostra tutti gli annunci
+          </button>
+        </p>
+      ) : (
+        <div className="suggest-kind-tabs wanted-filters">
+          <button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>
+            Aperti
+          </button>
+          <button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+            Tutti
+          </button>
+          <button type="button" className={filter === 'mine' ? 'active' : ''} onClick={() => setFilter('mine')}>
+            I miei
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <p className="page-message">Caricamento annunci...</p>
-      ) : posts.length === 0 ? (
+      ) : visiblePosts.length === 0 ? (
         <p className="page-message">
-          {filter === 'mine' ? 'Non hai pubblicato annunci.' : 'Nessun annuncio al momento.'}
+          {sharedPostId
+            ? "L'annuncio condiviso non esiste più: potrebbe essere stato eliminato."
+            : filter === 'mine'
+              ? 'Non hai pubblicato annunci.'
+              : 'Nessun annuncio al momento.'}
         </p>
       ) : (
         <ul className="wanted-list">
-          {posts.map((post) => (
+          {visiblePosts.map((post) => (
             <WantedPostCard
               key={post.id}
               post={post}
               busy={busy}
+              highlighted={post.id === sharedPostId}
               onToggleOffer={handleToggleOffer}
               onEdit={startEdit}
               onToggleStatus={handleToggleStatus}

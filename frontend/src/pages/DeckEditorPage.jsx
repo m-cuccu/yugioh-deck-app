@@ -302,6 +302,36 @@ export default function DeckEditorPage() {
     return out;
   }, [totalCopies, maxCopiesForCard, cards]);
 
+  // Carte da Extra Deck finite nel Main: capitava con gli Xyz, che sfuggivano al
+  // riconoscimento. Il Side puo' legittimamente contenerle, quindi si guarda solo il Main.
+  const misplacedExtra = useMemo(
+    () => cards.main.filter((c) => {
+      const info = cardInfo.get(c.card_id);
+      return info && isExtraDeckCard(info);
+    }),
+    [cards.main, cardInfo]
+  );
+
+  function moveMisplacedToExtra() {
+    if (misplacedExtra.length === 0) return;
+    const ids = new Set(misplacedExtra.map((c) => c.card_id));
+
+    setCards((prev) => {
+      const nextExtra = [...prev.extra];
+      for (const card of prev.main.filter((c) => ids.has(c.card_id))) {
+        const existing = nextExtra.find((c) => c.card_id === card.card_id);
+        if (existing) existing.quantity += card.quantity;
+        else nextExtra.push(card);
+      }
+      return {
+        ...prev,
+        main: prev.main.filter((c) => !ids.has(c.card_id)),
+        extra: nextExtra,
+      };
+    });
+    setDirty(true);
+  }
+
   const allCardsFlat = useMemo(() => {
     const flat = [];
     for (const section of ['main', 'extra', 'side']) {
@@ -691,6 +721,18 @@ export default function DeckEditorPage() {
           {notice}{' '}
           <button className="btn-link" type="button" onClick={() => setNotice('')}>
             Ho capito
+          </button>
+        </p>
+      )}
+
+      {!readOnly && misplacedExtra.length > 0 && (
+        <p className="import-notice">
+          {misplacedExtra.length === 1
+            ? '1 carta da Extra Deck si trova nel Main Deck'
+            : `${misplacedExtra.length} carte da Extra Deck si trovano nel Main Deck`}{' '}
+          ({misplacedExtra.map((c) => c.card_name).join(', ')}).{' '}
+          <button className="btn-link" type="button" onClick={moveMisplacedToExtra}>
+            Spostale nell'Extra Deck
           </button>
         </p>
       )}

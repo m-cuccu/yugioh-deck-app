@@ -52,14 +52,17 @@ async function fetchCardByName(cardName, lang) {
   return null;
 }
 
+const EXTRA_DECK_KINDS = ['fusion', 'synchro', 'xyz', 'link'];
+
+// Si guarda `frameType` (sempre minuscolo: 'xyz', 'fusion_pendulum', ...) e non `type`,
+// che per gli Xyz vale "XYZ Monster" in maiuscolo e sfuggiva a un confronto con "Xyz".
+// I Pendulum finiscono nell'Extra solo se sono anche Fusion/Synchro/Xyz.
 export function isExtraDeckCard(card) {
-  const t = card.type || '';
-  return (
-    t.includes('Fusion') ||
-    t.includes('Synchro') ||
-    t.includes('Xyz') ||
-    t.includes('Link')
-  );
+  const frame = (card.frameType || '').toLowerCase();
+  if (frame) return EXTRA_DECK_KINDS.some((k) => frame.includes(k));
+
+  const type = (card.type || '').toLowerCase();
+  return EXTRA_DECK_KINDS.some((k) => type.includes(k));
 }
 
 export function cardThumbnail(card) {

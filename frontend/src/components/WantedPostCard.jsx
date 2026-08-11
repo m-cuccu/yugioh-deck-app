@@ -1,15 +1,29 @@
 import { useState } from 'react';
 import WantedThread from './WantedThread';
 import CardDetailModal from './CardDetailModal';
+import ShareButtons from './ShareButtons';
 
-export default function WantedPostCard({ post, onToggleOffer, onEdit, onToggleStatus, onDelete, busy }) {
+export default function WantedPostCard({
+  post,
+  onToggleOffer,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  busy,
+  highlighted = false,
+}) {
   const [threadOpen, setThreadOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const closed = post.status === 'closed';
+  const shareUrl = `${window.location.origin}/cercasi?post=${post.id}`;
+  const shareText =
+    `Cerco ${post.quantity > 1 ? `${post.quantity} copie di ` : ''}"${post.card_name}"` +
+    (post.note ? ` — ${post.note}` : '');
 
   return (
-    <li className={`wanted-post ${closed ? 'is-closed' : ''}`}>
+    <li className={`wanted-post ${closed ? 'is-closed' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
       <div className="wanted-post-main">
         {post.card_image && (
           <button
@@ -79,7 +93,13 @@ export default function WantedPostCard({ post, onToggleOffer, onEdit, onToggleSt
         <button type="button" className="btn-link" onClick={() => setThreadOpen((v) => !v)}>
           {threadOpen ? 'Chiudi discussione' : 'Discussione'}
         </button>
+
+        <button type="button" className="btn-link" onClick={() => setShareOpen((v) => !v)}>
+          {shareOpen ? 'Nascondi condivisione' : 'Condividi'}
+        </button>
       </div>
+
+      {shareOpen && <ShareButtons text={shareText} url={shareUrl} />}
 
       {threadOpen && <WantedThread postId={post.id} isPostAuthor={post.isMine} />}
 
