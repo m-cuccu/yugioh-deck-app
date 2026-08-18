@@ -486,13 +486,33 @@ button {
 }
 
 .card-filters {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.card-filters-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
   margin-bottom: 10px;
 }
 
-.card-filters select {
+.card-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-filters-row select {
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);

@@ -25,52 +25,58 @@ export default function CardFilters({ value, onChange }) {
 
   return (
     <div className="card-filters">
-      <select value={value.category} onChange={(e) => setCategory(e.target.value)}>
-        <option value="">Tutti i tipi</option>
-        <option value="monster">Mostro</option>
-        <option value="spell">Magia</option>
-        <option value="trap">Trappola</option>
-      </select>
+      <div className="card-filters-header">
+        <span aria-hidden="true">🔍</span> Filtra per tipo di carta
+      </div>
 
-      {value.category === 'monster' && (
-        <>
-          <select value={value.monsterType} onChange={(e) => update({ monsterType: e.target.value })}>
-            <option value="">Qualsiasi tipo mostro</option>
-            {MONSTER_TYPE_FILTERS.map((t) => (
-              <option key={t.value} value={t.value}>{translateCardType(t.value, lang)}</option>
-            ))}
-          </select>
-
-          <select value={value.attribute} onChange={(e) => update({ attribute: e.target.value })}>
-            <option value="">Qualsiasi attributo</option>
-            {ATTRIBUTE_FILTERS.map((a) => (
-              <option key={a} value={a}>{translateAttribute(a, lang)}</option>
-            ))}
-          </select>
-
-          <select value={value.level} onChange={(e) => update({ level: e.target.value })}>
-            <option value="">Qualsiasi livello</option>
-            {LEVELS.map((lvl) => (
-              <option key={lvl} value={lvl}>Liv./Rank {lvl}</option>
-            ))}
-          </select>
-        </>
-      )}
-
-      {(value.category === 'spell' || value.category === 'trap') && (
-        <select value={value.subtype} onChange={(e) => update({ subtype: e.target.value })}>
-          <option value="">Qualsiasi sottotipo</option>
-          {(value.category === 'spell' ? SPELL_SUBTYPE_FILTERS : TRAP_SUBTYPE_FILTERS).map((s) => (
-            <option key={s} value={s}>{translateRace(s, lang)}</option>
-          ))}
+      <div className="card-filters-row">
+        <select value={value.category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Tutti i tipi</option>
+          <option value="monster">Mostro</option>
+          <option value="spell">Magia</option>
+          <option value="trap">Trappola</option>
         </select>
-      )}
 
-      {hasActiveCardFilters(value) && (
-        <button type="button" className="btn-link" onClick={() => onChange(EMPTY_CARD_FILTERS)}>
-          Azzera filtri
-        </button>
-      )}
+        {value.category === 'monster' && (
+          <>
+            <select value={value.monsterType} onChange={(e) => update({ monsterType: e.target.value })}>
+              <option value="">Qualsiasi tipo mostro</option>
+              {MONSTER_TYPE_FILTERS.map((t) => (
+                <option key={t.value} value={t.value}>{translateCardType(t.value, lang)}</option>
+              ))}
+            </select>
+
+            <select value={value.attribute} onChange={(e) => update({ attribute: e.target.value })}>
+              <option value="">Qualsiasi attributo</option>
+              {ATTRIBUTE_FILTERS.map((a) => (
+                <option key={a} value={a}>{translateAttribute(a, lang)}</option>
+              ))}
+            </select>
+
+            <select value={value.level} onChange={(e) => update({ level: e.target.value })}>
+              <option value="">Qualsiasi livello</option>
+              {LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>Liv./Rank {lvl}</option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {(value.category === 'spell' || value.category === 'trap') && (
+          <select value={value.subtype} onChange={(e) => update({ subtype: e.target.value })}>
+            <option value="">Qualsiasi sottotipo</option>
+            {(value.category === 'spell' ? SPELL_SUBTYPE_FILTERS : TRAP_SUBTYPE_FILTERS).map((s) => (
+              <option key={s} value={s}>{translateRace(s, lang)}</option>
+            ))}
+          </select>
+        )}
+
+        {hasActiveCardFilters(value) && (
+          <button type="button" className="btn-link" onClick={() => onChange(EMPTY_CARD_FILTERS)}>
+            Azzera filtri
+          </button>
+        )}
+      </div>
     </div>
   );
 }
