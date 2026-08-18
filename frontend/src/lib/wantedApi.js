@@ -41,6 +41,7 @@ export async function createWantedPost(userId, payload) {
       card_image: payload.cardImage || null,
       quantity: payload.quantity || 1,
       note: payload.note?.trim() || null,
+      rarity_label: payload.rarityLabel || null,
     })
     .select()
     .single();

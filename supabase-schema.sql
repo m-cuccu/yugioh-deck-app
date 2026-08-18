@@ -498,3 +498,7 @@ create trigger trg_wanted_posts_updated_at
   before update on wanted_posts
   for each row
   execute function set_updated_at();
+
+-- 12. Rarita'/edizione scelta da chi pubblica l'annuncio (facoltativa, come rarity_label
+-- su deck_cards): chi cerca puo' indicare la stampa esatta oppure lasciarla vuota.
+alter table wanted_posts add column if not exists rarity_label text;

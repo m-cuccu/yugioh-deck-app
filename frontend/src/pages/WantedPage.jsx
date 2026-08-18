@@ -9,7 +9,7 @@ import {
   setWantedOffer,
   updateWantedPost,
 } from '../lib/wantedApi';
-import { cardThumbnail, searchCards } from '../lib/ygoApi';
+import { cardThumbnail, fetchCardSets, rarityToClass, searchCards } from '../lib/ygoApi';
 import WantedPostCard from '../components/WantedPostCard';
 
 const MIN_QUANTITY = 1;
@@ -48,6 +48,10 @@ export default function WantedPage() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [quantity, setQuantity] = useState(String(MIN_QUANTITY));
   const [note, setNote] = useState('');
+  const [rarityLabel, setRarityLabel] = useState(null);
+  const [rarityPickerOpen, setRarityPickerOpen] = useState(false);
+  const [rarityOptions, setRarityOptions] = useState([]);
+  const [rarityLoading, setRarityLoading] = useState(false);
 
   function reload() {
     setLoading(true);
@@ -93,17 +97,32 @@ export default function WantedPage() {
     setSelectedCard(null);
     setQuantity(String(MIN_QUANTITY));
     setNote('');
+    setRarityLabel(null);
+    setRarityPickerOpen(false);
+    setRarityOptions([]);
   }
 
   function startEdit(post) {
     setEditingId(post.id);
     setFormOpen(true);
-    // in modifica la carta non si cambia: si aggiustano copie e nota
+    // in modifica la carta non si cambia: si aggiustano copie, nota e rarita'
     setSelectedCard({ id: post.card_id, name: post.card_name });
     setQuery(post.card_name);
     setQuantity(String(post.quantity));
     setNote(post.note || '');
+    setRarityLabel(post.rarity_label || null);
     window.scrollTo({ top: 0 });
+  }
+
+  function openRarityPicker() {
+    if (!selectedCard) return;
+    setRarityPickerOpen(true);
+    setRarityOptions([]);
+    setRarityLoading(true);
+    fetchCardSets(selectedCard.name, lang)
+      .then(setRarityOptions)
+      .catch((err) => setError(err.message))
+      .finally(() => setRarityLoading(false));
   }
 
   async function handleSubmit(e) {
@@ -117,7 +136,11 @@ export default function WantedPage() {
     setError('');
     try {
       if (editingId) {
-        await updateWantedPost(editingId, { quantity: qty, note: note.trim() || null });
+        await updateWantedPost(editingId, {
+          quantity: qty,
+          note: note.trim() || null,
+          rarity_label: rarityLabel || null,
+        });
       } else {
         await createWantedPost(user.id, {
           cardId: selectedCard.id,
@@ -125,6 +148,7 @@ export default function WantedPage() {
           cardImage: cardThumbnail(selectedCard),
           quantity: qty,
           note,
+          rarityLabel,
         });
       }
       resetForm();
@@ -240,6 +264,23 @@ export default function WantedPage() {
             </ul>
           )}
 
+          {selectedCard && (
+            <div className="wanted-rarity-choice">
+              {rarityLabel ? (
+                <p className="rarity-current">
+                  Edizione: <strong>{rarityLabel}</strong>{' '}
+                  <button className="btn-link" type="button" onClick={() => setRarityLabel(null)}>
+                    Rimuovi
+                  </button>
+                </p>
+              ) : (
+                <button className="btn-secondary" type="button" onClick={openRarityPicker}>
+                  Scegli rarità/edizione (opzionale)
+                </button>
+              )}
+            </div>
+          )}
+
           <label>
             Copie cercate
             <input
@@ -268,6 +309,49 @@ export default function WantedPage() {
             {editingId ? 'Salva modifiche' : 'Pubblica annuncio'}
           </button>
         </form>
+      )}
+
+      {rarityPickerOpen && (
+        <div className="art-picker-overlay" onClick={() => setRarityPickerOpen(false)}>
+          <div className="art-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="art-picker-header">
+              <h3>Scegli l'edizione di {selectedCard?.name}</h3>
+              <button className="btn-link" type="button" onClick={() => setRarityPickerOpen(false)}>
+                Chiudi
+              </button>
+            </div>
+            {rarityLoading ? (
+              <p className="page-message">Caricamento edizioni...</p>
+            ) : rarityOptions.length === 0 ? (
+              <p className="page-message">Nessuna edizione trovata per questa carta.</p>
+            ) : (
+              <ul className="rarity-list">
+                {rarityOptions.map((set, i) => {
+                  const label = `${set.set_rarity} · ${set.set_name}`;
+                  return (
+                    <li key={`${set.set_code}-${i}`} className="rarity-item">
+                      <span className={`rarity-swatch ${rarityToClass(set.set_rarity)}`} />
+                      <div className="rarity-item-text">
+                        <span className="rarity-name">{set.set_rarity}</span>
+                        <span className="rarity-set">{set.set_name} ({set.set_code})</span>
+                      </div>
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => {
+                          setRarityLabel(label);
+                          setRarityPickerOpen(false);
+                        }}
+                      >
+                        Scegli
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
       {sharedPostId ? (

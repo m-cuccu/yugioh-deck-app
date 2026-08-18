@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import WantedThread from './WantedThread';
 import CardDetailModal from './CardDetailModal';
+import CardSetsModal from './CardSetsModal';
 import ShareButtons from './ShareButtons';
+import { rarityToClass } from '../lib/ygoApi';
 
 export default function WantedPostCard({
   post,
@@ -15,6 +17,7 @@ export default function WantedPostCard({
   const [threadOpen, setThreadOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [setsOpen, setSetsOpen] = useState(false);
 
   const closed = post.status === 'closed';
   const shareUrl = `${window.location.origin}/cercasi?post=${post.id}`;
@@ -39,6 +42,12 @@ export default function WantedPostCard({
         <div className="wanted-post-info">
           <div className="wanted-post-head">
             <span className="wanted-post-name">{post.card_name}</span>
+            {post.rarity_label && (
+              <span className="wanted-post-rarity">
+                <span className={`rarity-swatch ${rarityToClass(post.rarity_label)}`} />
+                {post.rarity_label}
+              </span>
+            )}
             {closed && <span className="wanted-status">Chiuso</span>}
           </div>
 
@@ -94,6 +103,10 @@ export default function WantedPostCard({
           {threadOpen ? 'Chiudi discussione' : 'Discussione'}
         </button>
 
+        <button type="button" className="btn-link" onClick={() => setSetsOpen(true)}>
+          Vedi edizioni
+        </button>
+
         <button type="button" className="btn-link" onClick={() => setShareOpen((v) => !v)}>
           {shareOpen ? 'Nascondi condivisione' : 'Condividi'}
         </button>
@@ -104,6 +117,8 @@ export default function WantedPostCard({
       {threadOpen && <WantedThread postId={post.id} isPostAuthor={post.isMine} />}
 
       {detailOpen && <CardDetailModal cardId={post.card_id} onClose={() => setDetailOpen(false)} />}
+
+      {setsOpen && <CardSetsModal cardName={post.card_name} onClose={() => setSetsOpen(false)} />}
     </li>
   );
 }

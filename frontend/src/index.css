@@ -1679,6 +1679,19 @@ button {
   color: var(--text-h);
 }
 
+.wanted-post-rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wanted-post-rarity .rarity-swatch {
+  width: 12px;
+  height: 16px;
+}
+
 .wanted-status {
   font-size: 11px;
   font-weight: 700;
