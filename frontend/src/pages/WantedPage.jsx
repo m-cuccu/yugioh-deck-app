@@ -9,8 +9,15 @@ import {
   setWantedOffer,
   updateWantedPost,
 } from '../lib/wantedApi';
-import { cardThumbnail, fetchCardSets, rarityToClass, searchCards } from '../lib/ygoApi';
+import {
+  cardThumbnail,
+  fetchCardSets,
+  rarityToClass,
+  resolveCardFilters,
+  searchCardsByFilters,
+} from '../lib/ygoApi';
 import WantedPostCard from '../components/WantedPostCard';
+import CardFilters, { EMPTY_CARD_FILTERS, hasActiveCardFilters } from '../components/CardFilters';
 
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
@@ -45,6 +52,7 @@ export default function WantedPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_CARD_FILTERS);
   const [selectedCard, setSelectedCard] = useState(null);
   const [quantity, setQuantity] = useState(String(MIN_QUANTITY));
   const [note, setNote] = useState('');
@@ -74,26 +82,27 @@ export default function WantedPage() {
   const visiblePosts = sharedPostId ? posts.filter((p) => p.id === sharedPostId) : posts;
 
   useEffect(() => {
-    if (!query.trim() || selectedCard) {
+    if ((!query.trim() && !hasActiveCardFilters(filters)) || selectedCard) {
       setResults([]);
       return;
     }
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(() => {
-      searchCards(query, lang)
+      searchCardsByFilters({ query, lang, ...resolveCardFilters(filters) })
         .then((data) => { if (!cancelled) setResults(data.slice(0, 25)); })
         .catch(() => { if (!cancelled) setResults([]); })
         .finally(() => { if (!cancelled) setSearching(false); });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, lang, selectedCard]);
+  }, [query, lang, filters, selectedCard]);
 
   function resetForm() {
     setFormOpen(false);
     setEditingId(null);
     setQuery('');
     setResults([]);
+    setFilters(EMPTY_CARD_FILTERS);
     setSelectedCard(null);
     setQuantity(String(MIN_QUANTITY));
     setNote('');
@@ -239,6 +248,7 @@ export default function WantedPage() {
               disabled={Boolean(editingId)}
             />
           </label>
+          {!editingId && <CardFilters value={filters} onChange={setFilters} />}
           {editingId && (
             <p className="deck-sort-hint">
               La carta non si può cambiare: elimina l'annuncio e creane uno nuovo.
@@ -259,6 +269,7 @@ export default function WantedPage() {
                 >
                   {cardThumbnail(card) && <img src={cardThumbnail(card)} alt={card.name} loading="lazy" />}
                   <span>{card.name}</span>
+                  <span className="search-result-type">{card.type}</span>
                 </li>
               ))}
             </ul>

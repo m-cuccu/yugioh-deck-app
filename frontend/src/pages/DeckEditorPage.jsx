@@ -20,6 +20,7 @@ import { SORT_OPTIONS, sortDeckCards } from '../lib/deckSort';
 import SuggestionCard from '../components/SuggestionCard';
 import CardDetailModal from '../components/CardDetailModal';
 import QuickSuggestModal from '../components/QuickSuggestModal';
+import CardFilters, { EMPTY_CARD_FILTERS, hasActiveCardFilters } from '../components/CardFilters';
 import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } from '../lib/deckIO';
 import {
   cardThumbnail,
@@ -29,7 +30,9 @@ import {
   fetchRelatedCards,
   isExtraDeckCard,
   rarityToClass,
+  resolveCardFilters,
   searchCards,
+  searchCardsByFilters,
 } from '../lib/ygoApi';
 
 const LIMITS = { main: [40, 60], extra: [0, 15], side: [0, 15] };
@@ -75,6 +78,7 @@ export default function DeckEditorPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_CARD_FILTERS);
 
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
@@ -207,20 +211,20 @@ export default function DeckEditorPage() {
   }, [focusedSuggestionId, suggestionsLoading]);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() && !hasActiveCardFilters(filters)) {
       setResults([]);
       return;
     }
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(() => {
-      searchCards(query, lang)
+      searchCardsByFilters({ query, lang, ...resolveCardFilters(filters) })
         .then((data) => { if (!cancelled) setResults(data.slice(0, 25)); })
         .catch(() => { if (!cancelled) setResults([]); })
         .finally(() => { if (!cancelled) setSearching(false); });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, lang]);
+  }, [query, lang, filters]);
 
   useEffect(() => {
     if (!suggestQuery.trim()) {
@@ -758,6 +762,7 @@ export default function DeckEditorPage() {
 
       {!readOnly && (
         <div className="card-search">
+          <CardFilters value={filters} onChange={setFilters} />
           <input
             type="text"
             placeholder="Cerca una carta per nome..."

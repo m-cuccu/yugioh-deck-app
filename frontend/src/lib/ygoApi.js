@@ -8,12 +8,17 @@ function langParam(lang) {
 
 const FALLBACK_LANGS = ['en', 'it'];
 
-async function searchIn(query, lang) {
-  const res = await fetch(`${BASE_URL}?fname=${encodeURIComponent(query)}${langParam(lang)}`);
+async function fetchCardsWith(params, lang) {
+  const qs = new URLSearchParams(params);
+  const res = await fetch(`${BASE_URL}?${qs.toString()}${langParam(lang)}`);
   if (res.status === 400) return []; // l'API risponde 400 quando non trova nulla
   if (!res.ok) throw new Error('Impossibile contattare il servizio carte');
   const json = await res.json();
   return json.data || [];
+}
+
+function searchIn(query, lang) {
+  return fetchCardsWith({ fname: query }, lang);
 }
 
 export async function searchCards(query, lang) {
@@ -33,6 +38,87 @@ export async function searchCards(query, lang) {
   const byId = new Map();
   for (const c of english) byId.set(c.id, c);
   for (const c of localized) byId.set(c.id, c);
+
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Valori esatti richiesti dall'API per i filtri di ricerca (vedi CardFilters.jsx). Alcuni
+// meccanismi corrispondono a piu' di una stringa `type` reale (es. i mostri Rituali si dividono
+// in "Ritual Monster"/"Ritual Effect Monster", e Fusione/Synchro/Xyz hanno anche una variante
+// Pendulum): per non escludere meta' delle carte, ogni voce elenca tutte le stringhe da unire.
+export const MONSTER_TYPE_FILTERS = [
+  { value: 'Normal Monster', apiTypes: ['Normal Monster'] },
+  { value: 'Effect Monster', apiTypes: ['Effect Monster'] },
+  { value: 'Ritual Monster', apiTypes: ['Ritual Monster', 'Ritual Effect Monster', 'Pendulum Effect Ritual Monster'] },
+  { value: 'Fusion Monster', apiTypes: ['Fusion Monster', 'Pendulum Effect Fusion Monster'] },
+  { value: 'Synchro Monster', apiTypes: ['Synchro Monster', 'Synchro Pendulum Effect Monster'] },
+  { value: 'XYZ Monster', apiTypes: ['XYZ Monster', 'XYZ Pendulum Effect Monster'] },
+  { value: 'Link Monster', apiTypes: ['Link Monster'] },
+  { value: 'Pendulum Normal Monster', apiTypes: ['Pendulum Normal Monster'] },
+  { value: 'Pendulum Effect Monster', apiTypes: ['Pendulum Effect Monster'] },
+];
+
+export const SPELL_SUBTYPE_FILTERS = ['Normal', 'Continuous', 'Equip', 'Quick-Play', 'Field', 'Ritual'];
+
+export const TRAP_SUBTYPE_FILTERS = ['Normal', 'Continuous', 'Counter'];
+
+export const ATTRIBUTE_FILTERS = ['LIGHT', 'DARK', 'EARTH', 'WATER', 'FIRE', 'WIND', 'DIVINE'];
+
+// Traduce lo stato del pannello filtri (vedi CardFilters.jsx) nei parametri esatti dell'API.
+export function resolveCardFilters(filters) {
+  if (filters.category === 'monster') {
+    const entry = MONSTER_TYPE_FILTERS.find((m) => m.value === filters.monsterType);
+    return {
+      types: entry?.apiTypes,
+      attribute: filters.attribute || undefined,
+      level: filters.level || undefined,
+    };
+  }
+  if (filters.category === 'spell') {
+    return { types: ['Spell Card'], race: filters.subtype || undefined };
+  }
+  if (filters.category === 'trap') {
+    return { types: ['Trap Card'], race: filters.subtype || undefined };
+  }
+  return {};
+}
+
+async function fetchCardsMerged(params, lang) {
+  if (!lang || lang === 'en') return fetchCardsWith(params, 'en');
+
+  const [localized, english] = await Promise.all([
+    fetchCardsWith(params, lang).catch(() => []),
+    fetchCardsWith(params, 'en').catch(() => []),
+  ]);
+
+  const byId = new Map();
+  for (const c of english) byId.set(c.id, c);
+  for (const c of localized) byId.set(c.id, c);
+  return [...byId.values()];
+}
+
+// Ricerca per nome combinabile con i filtri di tipo/sottotipo/attributo/livello: permette di
+// sfogliare le carte anche senza conoscerne il nome (es. per "AAA Cercasi"). `types`, quando ha
+// piu' di un valore (es. Rituale = con/senza effetto + variante Pendulum), viene interrogato con
+// una chiamata per valore e i risultati vengono uniti, cosi' nessuna variante resta esclusa.
+export async function searchCardsByFilters({ query, lang, types, race, attribute, level } = {}) {
+  const q = (query || '').trim();
+  const baseParams = {};
+  if (q) baseParams.fname = q;
+  if (race) baseParams.race = race;
+  if (attribute) baseParams.attribute = attribute;
+  if (level) baseParams.level = level;
+
+  const hasType = Array.isArray(types) && types.length > 0;
+  if (Object.keys(baseParams).length === 0 && !hasType) return [];
+
+  const typeList = hasType ? types : [undefined];
+  const batches = await Promise.all(
+    typeList.map((t) => fetchCardsMerged(t ? { ...baseParams, type: t } : baseParams, lang).catch(() => []))
+  );
+
+  const byId = new Map();
+  for (const batch of batches) for (const c of batch) byId.set(c.id, c);
 
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

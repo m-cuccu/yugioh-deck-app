@@ -485,6 +485,22 @@ button {
   margin-bottom: 24px;
 }
 
+.card-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card-filters select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 13px;
+}
+
 .deck-sort {
   display: flex;
   align-items: center;
