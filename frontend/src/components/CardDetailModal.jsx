@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchCardDetails } from '../lib/ygoApi';
+import { fetchCardTraderPrice } from '../lib/cardtraderApi';
 import { translateAttribute, translateCardType, translateRace } from '../lib/cardI18n';
 import { useBanlist } from '../context/BanlistContext';
 import { banlistClass, banlistLabel } from '../lib/banlist';
@@ -14,6 +15,9 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
   const [card, setCard] = useState(initialCard || null);
   const [loading, setLoading] = useState(!initialCard);
   const [error, setError] = useState('');
+
+  const [price, setPrice] = useState(null); // { price, currency, url } | null finche' non arriva
+  const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     if (initialCard) {
@@ -32,6 +36,17 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [cardId, initialCard, lang]);
+
+  useEffect(() => {
+    if (!card?.name) return;
+    let cancelled = false;
+    setPriceLoading(true);
+    fetchCardTraderPrice(card.name)
+      .then((data) => { if (!cancelled) setPrice(data); })
+      .catch(() => { if (!cancelled) setPrice(null); })
+      .finally(() => { if (!cancelled) setPriceLoading(false); });
+    return () => { cancelled = true; };
+  }, [card?.name]);
 
   const image = card?.card_images?.[0]?.image_url || card?.card_images?.[0]?.image_url_small;
   const isMonster = Boolean(card?.type?.includes('Monster'));
@@ -56,6 +71,29 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
             <div className="card-detail-info">
               <p className="card-detail-type">
                 {translateCardType(card.humanReadableCardType || card.type, lang)}
+              </p>
+
+              <p className="card-detail-price">
+                CardTrader:{' '}
+                {priceLoading ? (
+                  'ricerca prezzo...'
+                ) : price?.price != null ? (
+                  <strong>
+                    {new Intl.NumberFormat('it-IT', { style: 'currency', currency: price.currency || 'EUR' }).format(
+                      price.price
+                    )}
+                  </strong>
+                ) : (
+                  'prezzo non disponibile'
+                )}
+                {price?.url && (
+                  <>
+                    {' '}
+                    <a href={price.url} target="_blank" rel="noopener noreferrer" className="btn-link">
+                      Vedi su CardTrader ↗
+                    </a>
+                  </>
+                )}
               </p>
 
               {format !== 'none' && statusOf(card.id) && (

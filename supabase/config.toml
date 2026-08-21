@@ -1,0 +1,7 @@
+project_id = "yugioh-deck-app"
+
+[functions.cardtrader-sync]
+verify_jwt = true
+
+[functions.cardtrader-price]
+verify_jwt = true
