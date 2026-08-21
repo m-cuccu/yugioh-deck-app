@@ -2049,6 +2049,12 @@ button {
   margin-bottom: 10px;
 }
 
+.card-detail-price {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
 .card-detail-stats {
   list-style: none;
   margin: 0 0 10px;

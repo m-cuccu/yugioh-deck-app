@@ -202,16 +202,39 @@ export async function fetchCardSets(cardName, lang) {
 
 // Scheda completa di una carta (effetto, statistiche) a partire dall'id.
 // Come per le altre chiamate si ripiega sull'altra lingua se il record non esiste.
+async function fetchCardByIdIn(cardId, lang) {
+  const res = await fetch(`${BASE_URL}?id=${encodeURIComponent(cardId)}${langParam(lang)}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data?.[0] || null;
+}
+
+// Nome inglese di una carta. Serve per cercarla su servizi esterni (il catalogo CardTrader
+// e' in inglese), dove il nome tradotto non troverebbe alcuna corrispondenza.
+export async function fetchEnglishCardName(cardId) {
+  const card = await fetchCardByIdIn(cardId, 'en');
+  return card?.name || null;
+}
+
 export async function fetchCardDetails(cardId, lang) {
   const langs = [lang || 'en', ...FALLBACK_LANGS.filter((l) => l !== (lang || 'en'))];
+
+  let card = null;
   for (const l of langs) {
-    const res = await fetch(`${BASE_URL}?id=${encodeURIComponent(cardId)}${langParam(l)}`);
-    if (!res.ok) continue;
-    const json = await res.json();
-    const card = json.data?.[0];
-    if (card) return card;
+    card = await fetchCardByIdIn(cardId, l);
+    if (card) break;
   }
-  return null;
+  if (!card) return null;
+
+  // si porta dietro anche il nome inglese, usato per il prezzo su CardTrader
+  if (!lang || lang === 'en') {
+    card.englishName = card.name;
+  } else {
+    const english = await fetchCardByIdIn(cardId, 'en');
+    card.englishName = english?.name || card.name;
+  }
+
+  return card;
 }
 
 // Dati completi delle carte di un deck a partire dagli id, nella lingua scelta.

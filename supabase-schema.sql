@@ -502,3 +502,30 @@ create trigger trg_wanted_posts_updated_at
 -- 12. Rarita'/edizione scelta da chi pubblica l'annuncio (facoltativa, come rarity_label
 -- su deck_cards): chi cerca puo' indicare la stampa esatta oppure lasciarla vuota.
 alter table wanted_posts add column if not exists rarity_label text;
+
+-- 13. Catalogo carte CardTrader (una riga per stampa/espansione), usato per risalire dal
+-- nome di una carta al suo `blueprint_id` su CardTrader, dato che l'API di CardTrader non
+-- permette di cercare per nome ma solo per espansione. Popolata dalla Edge Function
+-- cardtrader-sync; le letture servono alla Edge Function cardtrader-price per trovare i
+-- blueprint da controllare quando l'app chiede il prezzo di una carta.
+create table if not exists cardtrader_blueprints (
+  blueprint_id bigint primary key,
+  name text not null,
+  expansion_id bigint,
+  expansion_name text,
+  image_url text,
+  synced_at timestamptz not null default now()
+);
+
+create index if not exists idx_cardtrader_blueprints_name on cardtrader_blueprints (lower(name));
+
+alter table cardtrader_blueprints enable row level security;
+
+drop policy if exists "Il catalogo CardTrader e' leggibile da chiunque sia autenticato" on cardtrader_blueprints;
+create policy "Il catalogo CardTrader e' leggibile da chiunque sia autenticato"
+  on cardtrader_blueprints for select
+  to authenticated
+  using (true);
+
+-- Nessuna policy di insert/update per gli utenti: scrive solo cardtrader-sync, che usa la
+-- service_role key e quindi bypassa la RLS.
