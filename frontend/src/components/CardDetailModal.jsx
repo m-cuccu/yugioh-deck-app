@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchCardDetails } from '../lib/ygoApi';
+import { fetchCardDetails, fetchEnglishCardName } from '../lib/ygoApi';
 import { fetchCardTraderPrice } from '../lib/cardtraderApi';
 import { translateAttribute, translateCardType, translateRace } from '../lib/cardI18n';
 import { useBanlist } from '../context/BanlistContext';
@@ -37,16 +37,28 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
     return () => { cancelled = true; };
   }, [cardId, initialCard, lang]);
 
+  // Il catalogo CardTrader e' in inglese: cercando col nome tradotto non si trova nulla e il
+  // prezzo risulterebbe sempre non disponibile. Si usa quindi il nome inglese, recuperandolo
+  // se la carta arriva dai risultati di ricerca (dove non lo portiamo dietro).
   useEffect(() => {
-    if (!card?.name) return;
+    if (!card?.id) return;
     let cancelled = false;
     setPriceLoading(true);
-    fetchCardTraderPrice(card.name)
+
+    const resolveName = card.englishName
+      ? Promise.resolve(card.englishName)
+      : !lang || lang === 'en'
+        ? Promise.resolve(card.name)
+        : fetchEnglishCardName(card.id).then((n) => n || card.name);
+
+    resolveName
+      .then((name) => fetchCardTraderPrice(name))
       .then((data) => { if (!cancelled) setPrice(data); })
       .catch(() => { if (!cancelled) setPrice(null); })
       .finally(() => { if (!cancelled) setPriceLoading(false); });
+
     return () => { cancelled = true; };
-  }, [card?.name]);
+  }, [card?.id, card?.englishName, card?.name, lang]);
 
   const image = card?.card_images?.[0]?.image_url || card?.card_images?.[0]?.image_url_small;
   const isMonster = Boolean(card?.type?.includes('Monster'));

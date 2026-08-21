@@ -2,25 +2,26 @@
 // blueprint_id gia' sincronizzati per quel nome (cardtrader-sync) e chiede il prezzo live solo
 // per quelli, cosi' il token e le chiamate a CardTrader restano sempre lato server.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { cardtraderFetch } from '../_shared/cardtrader.ts';
+import { fetchMarketplaceProducts, jsonResponse, preflightResponse } from '../_shared/cardtrader.ts';
 
-// Limite deliberato: non si controllano tutte le ristampe storiche di una carta ad ogni
-// richiesta, solo le prime trovate, per restare leggeri sul rate limit condiviso da tutta l'app.
-const MAX_BLUEPRINTS_PER_LOOKUP = 5;
+// Non si controllano tutte le ristampe storiche di una carta a ogni richiesta: /marketplace/products
+// ammette 10 chiamate al secondo e ne serve una per stampa. Si guarda quindi un sottoinsieme,
+// ordinato in modo deterministico (senza ORDER BY il database ne restituirebbe altre a ogni
+// chiamata, e il prezzo mostrato cambierebbe senza motivo apparente).
+const MAX_BLUEPRINTS_PER_LOOKUP = 8;
 
 function cardtraderSearchUrl(name: string) {
   return `https://www.cardtrader.com/en/games/yu-gi-oh/categories/yu-gi-oh-singles/blueprints_search?name=${encodeURIComponent(name)}`;
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return preflightResponse();
+
   try {
     const { cardName } = await req.json();
     const name = (cardName || '').trim();
     if (!name) {
-      return new Response(JSON.stringify({ error: 'cardName mancante' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'cardName mancante' }, 400);
     }
 
     const url = cardtraderSearchUrl(name);
@@ -34,18 +35,17 @@ Deno.serve(async (req) => {
       .from('cardtrader_blueprints')
       .select('blueprint_id')
       .ilike('name', name) // case-insensitive, senza wildcard = confronto esatto
+      .order('blueprint_id', { ascending: true })
       .limit(MAX_BLUEPRINTS_PER_LOOKUP);
     if (error) throw error;
 
     if (!blueprints || blueprints.length === 0) {
-      return new Response(JSON.stringify({ price: null, url }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ price: null, url });
     }
 
     let cheapest: { cents: number; currency: string } | null = null;
     for (const { blueprint_id } of blueprints) {
-      const listings = await cardtraderFetch('/marketplace/products', { blueprint_id });
+      const listings = await fetchMarketplaceProducts({ blueprint_id });
       for (const listing of listings as Array<{ price?: { cents: number; currency: string } }>) {
         const cents = listing.price?.cents;
         if (typeof cents !== 'number') continue;
@@ -56,19 +56,18 @@ Deno.serve(async (req) => {
     }
 
     if (!cheapest) {
-      return new Response(JSON.stringify({ price: null, url }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ price: null, url });
     }
 
-    return new Response(
-      JSON.stringify({ price: cheapest.cents / 100, currency: cheapest.currency, url }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+    return jsonResponse({
+        price: cheapest.cents / 100,
+        currency: cheapest.currency,
+        // quante stampe sono state controllate: il prezzo e' il piu' basso fra queste,
+        // non necessariamente fra tutte le ristampe esistenti della carta
+        printingsChecked: blueprints.length,
+        url,
     });
+  } catch (err) {
+    return jsonResponse({ error: (err as Error).message }, 500);
   }
 });
