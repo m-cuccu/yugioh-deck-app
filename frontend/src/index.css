@@ -1440,11 +1440,48 @@ button {
 }
 
 .art-picker-grid button {
+  position: relative;
   padding: 0;
   border: 2px solid transparent;
   border-radius: 8px;
   background: none;
   cursor: pointer;
+}
+
+.spoiler-overframe-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #a879ff, #ff8fd6, #ffd76a, #a879ff);
+  background-size: 250% 100%;
+  animation: overframe-shimmer 3s linear infinite;
+  color: #17141f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 6px rgba(168, 121, 255, 0.7);
+}
+
+.spoiler-overframe-badge::before {
+  content: '✦';
+  font-size: 9px;
+}
+
+@keyframes overframe-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 250% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spoiler-overframe-badge {
+    animation: none;
+  }
 }
 
 .art-picker-grid button:hover {
@@ -1456,6 +1493,52 @@ button {
   aspect-ratio: 59 / 86;
   object-fit: cover;
   border-radius: 6px;
+}
+
+/* Carta rivelata solo per nome (fallback Yugipedia), senza immagine/scheda su YGOPRODeck. */
+.spoiler-pending-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  font-family: inherit;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.spoiler-unofficial-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spoiler-pending-card-image {
+  padding: 0;
+  overflow: hidden;
+}
+
+.spoiler-pending-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* --- Suggestions --- */
@@ -2040,6 +2123,26 @@ button {
 .card-detail-info {
   flex: 1;
   min-width: 200px;
+}
+
+.card-detail-overframe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 180px;
+}
+
+.card-detail-overframe img {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.card-detail-overframe span {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .card-detail-type {

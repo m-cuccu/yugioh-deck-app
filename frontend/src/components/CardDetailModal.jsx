@@ -9,7 +9,7 @@ import { banlistClass, banlistLabel } from '../lib/banlist';
 // Scheda con effetto e statistiche di una carta.
 // Si puo' passare `card` gia' completo (es. dai risultati di ricerca) oppure solo `cardId`,
 // nel qual caso i dati vengono recuperati al volo.
-export default function CardDetailModal({ card: initialCard, cardId, onClose }) {
+export default function CardDetailModal({ card: initialCard, cardId, onClose, overframeImage }) {
   const { lang } = useLanguage();
   const { statusOf, maxCopiesForCard, format } = useBanlist();
   const [card, setCard] = useState(initialCard || null);
@@ -79,6 +79,13 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose }) 
         ) : (
           <div className="card-detail-body">
             {image && <img className="card-detail-image" src={image} alt={card.name} />}
+
+            {overframeImage && (
+              <div className="card-detail-overframe">
+                <img src={overframeImage} alt={`${card.name} (Overframe)`} />
+                <span>Overframe (Extended Art)</span>
+              </div>
+            )}
 
             <div className="card-detail-info">
               <p className="card-detail-type">

@@ -126,7 +126,7 @@ export async function searchCardsByFilters({ query, lang, types, race, attribute
 // Cerca una carta per nome esatto provando prima la lingua richiesta e poi le altre:
 // serve perche' il nome memorizzato puo' essere in una lingua diversa da quella attiva
 // (tipicamente inglese, per le carte prive di traduzione).
-async function fetchCardByName(cardName, lang) {
+export async function fetchCardByName(cardName, lang) {
   const langs = [lang || 'en', ...FALLBACK_LANGS.filter((l) => l !== (lang || 'en'))];
   for (const l of langs) {
     const res = await fetch(`${BASE_URL}?name=${encodeURIComponent(cardName)}${langParam(l)}`);
@@ -198,6 +198,42 @@ export async function fetchRelatedCards(cardName, lang) {
 export async function fetchCardSets(cardName, lang) {
   const card = await fetchCardByName(cardName, lang);
   return card?.card_sets || [];
+}
+
+const SETS_URL = 'https://db.ygoprodeck.com/api/v7/cardsets.php';
+
+// Set gia' confermati (data e nome ufficiali) ma non ancora catalogati da YGOPRODeck, in
+// genere perche' rivelati di recente solo in OCG: YGOPRODeck di norma li aggiunge con
+// l'avvicinarsi della data TCG, a quel punto l'entry qui sotto diventa ridondante e viene
+// scartata automaticamente (vedi filtro piu' sotto). Le carte si recuperano comunque in
+// automatico: da YGOPRODeck se disponibili, altrimenti da Yugipedia (fetchCardsBySet).
+const MANUAL_UPCOMING_SETS = [
+  { set_name: 'Beyond the Brave', set_code: 'BETB', num_of_cards: 100, tcg_date: '2026-10-09' },
+];
+
+// Set TCG non ancora usciti (data futura), ordinati dal piu' imminente. YGOPRODeck aggiunge
+// le carte di un set gia' appena vengono rivelate da Konami, ben prima della tcg_date: e'
+// questa la fonte principale degli "spoiler" mostrati nella sezione dedicata.
+export async function fetchUpcomingSets() {
+  const res = await fetch(SETS_URL);
+  if (!res.ok) throw new Error('Impossibile contattare il servizio set');
+  const sets = await res.json();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const known = new Set(sets.map((s) => s.set_name));
+  const merged = [...sets, ...MANUAL_UPCOMING_SETS.filter((s) => !known.has(s.set_name))];
+
+  return merged
+    .filter((s) => s.tcg_date && s.tcg_date > today)
+    .sort((a, b) => a.tcg_date.localeCompare(b.tcg_date));
+}
+
+// Carte finora rivelate di un set (puo' essere un sottoinsieme se il set non e' ancora
+// uscito per intero). Stessa forma dati di `cardinfo.php`, pronta per CardDetailModal.
+// Le carte appena spoilerate spesso non hanno ancora un record nella lingua scelta: si usa
+// fetchCardsMerged (EN come base + localizzata quando c'e') per non perderne nessuna.
+export function fetchCardsBySet(setName, lang) {
+  return fetchCardsMerged({ cardset: setName }, lang);
 }
 
 // Scheda completa di una carta (effetto, statistiche) a partire dall'id.

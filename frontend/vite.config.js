@@ -42,6 +42,18 @@ export default defineConfig({
             },
           },
           {
+            // set/carte della sezione Spoiler: a differenza del resto (dati di deck-building,
+            // che cambiano di rado) qui la freschezza conta - si mostra la cache ma si
+            // riscarica subito in background, come per la banlist.
+            urlPattern: /^https:\/\/db\.ygoprodeck\.com\/api\/.*(cardsets\.php|cardset=)/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'ygoprodeck-spoiler',
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 6 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: /^https:\/\/db\.ygoprodeck\.com\/api\//,
             handler: 'CacheFirst',
             options: {

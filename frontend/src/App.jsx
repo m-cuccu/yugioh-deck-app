@@ -8,6 +8,8 @@ import FriendsPage from './pages/FriendsPage';
 import SuggestionsPage from './pages/SuggestionsPage';
 import BanlistPage from './pages/BanlistPage';
 import WantedPage from './pages/WantedPage';
+import SpoilerPage from './pages/SpoilerPage';
+import SpoilerSetPage from './pages/SpoilerSetPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -27,6 +29,8 @@ function App() {
           <Route path="/cercasi" element={<WantedPage />} />
           <Route path="/banlist" element={<BanlistPage />} />
           <Route path="/amici" element={<FriendsPage />} />
+          <Route path="/spoiler" element={<SpoilerPage />} />
+          <Route path="/spoiler/:setName" element={<SpoilerSetPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
