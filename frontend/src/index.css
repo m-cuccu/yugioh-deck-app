@@ -1488,6 +1488,122 @@ button {
   border-color: var(--accent);
 }
 
+.collection-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.collection-tile {
+  position: relative;
+}
+
+.collection-card-image {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+}
+
+.collection-card-image:hover {
+  border-color: var(--accent);
+}
+
+.collection-card-image img {
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.collection-card-image img.is-unowned {
+  filter: grayscale(1) brightness(0.75);
+  opacity: 0.85;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.collection-card-image img.is-unowned:hover {
+  filter: grayscale(0.6) brightness(0.9);
+}
+
+.collection-owned-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(20, 20, 26, 0.75);
+  color: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.collection-owned-badge.is-owned {
+  background: var(--accent);
+  color: #17141f;
+}
+
+.visibility-toggle-row {
+  margin: 8px 0 16px;
+}
+
+.visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.visibility-toggle-track {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.visibility-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s ease;
+}
+
+.visibility-toggle.is-on .visibility-toggle-track {
+  background: var(--ok);
+}
+
+.visibility-toggle.is-on .visibility-toggle-knob {
+  left: 18px;
+}
+
 .art-picker-grid img {
   width: 100%;
   aspect-ratio: 59 / 86;

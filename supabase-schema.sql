@@ -529,3 +529,95 @@ create policy "Il catalogo CardTrader e' leggibile da chiunque sia autenticato"
 
 -- Nessuna policy di insert/update per gli utenti: scrive solo cardtrader-sync, che usa la
 -- service_role key e quindi bypassa la RLS.
+
+-- 14. Collezione personale: una riga per carta posseduta (per nome/id, non per stampa/edizione
+-- ne' rarita': la ristampa e' irrilevante ai fini del possesso). card_name/card_image sono
+-- un'istantanea salvata all'aggiunta, come per wanted_posts, per poter mostrare la collezione
+-- senza richiamare l'API carta per carta.
+create table if not exists owned_cards (
+  user_id uuid not null references profiles(id) on delete cascade,
+  card_id integer not null,
+  card_name text not null,
+  card_image text,
+  created_at timestamptz not null default now(),
+  primary key (user_id, card_id)
+);
+
+create index if not exists idx_owned_cards_user on owned_cards(user_id);
+
+alter table owned_cards enable row level security;
+
+drop policy if exists "Ognuno gestisce solo la propria collezione" on owned_cards;
+create policy "Ognuno gestisce solo la propria collezione"
+  on owned_cards for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- 15. Visibilita' della collezione: spenta di default (l'utente la rende pubblica dal proprio
+-- profilo/pagina Collezione). La policy "for all" sopra (solo proprietario) resta invariata e
+-- continua a governare scrittura e lettura del proprio; questa aggiunge in OR la lettura per
+-- chiunque altro quando il proprietario l'ha resa pubblica.
+alter table profiles add column if not exists collection_public boolean not null default false;
+
+drop policy if exists "La collezione e' visibile anche se resa pubblica" on owned_cards;
+create policy "La collezione e' visibile anche se resa pubblica"
+  on owned_cards for select
+  to authenticated
+  using (
+    exists (select 1 from profiles p where p.id = owned_cards.user_id and p.collection_public = true)
+  );
+
+-- 16. Richieste dirette di una carta specifica a un utente di cui si e' vista la collezione:
+-- diverse dagli annunci pubblici di wanted_posts, perche' qui si sa gia' chi ha la carta.
+create table if not exists card_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references profiles(id) on delete cascade,
+  owner_id uuid not null references profiles(id) on delete cascade,
+  card_id integer not null,
+  card_name text not null,
+  card_image text,
+  status text not null default 'pending' check (status in ('pending', 'fulfilled', 'declined')),
+  seen_by_owner boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_card_requests_owner on card_requests(owner_id, status);
+create index if not exists idx_card_requests_requester on card_requests(requester_id);
+
+alter table card_requests enable row level security;
+
+drop policy if exists "Le richieste si vedono se mittente o destinatario" on card_requests;
+create policy "Le richieste si vedono se mittente o destinatario"
+  on card_requests for select
+  to authenticated
+  using (requester_id = auth.uid() or owner_id = auth.uid());
+
+drop policy if exists "Si richiede solo a nome proprio e non a se stessi" on card_requests;
+create policy "Si richiede solo a nome proprio e non a se stessi"
+  on card_requests for insert
+  to authenticated
+  with check (requester_id = auth.uid() and owner_id <> auth.uid());
+
+drop policy if exists "Il destinatario risponde alla richiesta" on card_requests;
+create policy "Il destinatario risponde alla richiesta"
+  on card_requests for update
+  to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+drop policy if exists "Mittente o destinatario eliminano la richiesta" on card_requests;
+create policy "Mittente o destinatario eliminano la richiesta"
+  on card_requests for delete
+  to authenticated
+  using (requester_id = auth.uid() or owner_id = auth.uid());
+
+-- 17. With check esplicito sull'update del proprio profilo (coerente con lo stile delle altre
+-- policy di update nello schema): l'update di collection_public in setCollectionVisibility e'
+-- il primo update mai eseguito su profiles, quindi si rende esplicito cio' che prima era implicito.
+drop policy if exists "Un utente modifica solo il proprio profilo" on profiles;
+create policy "Un utente modifica solo il proprio profilo"
+  on profiles for update
+  to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);

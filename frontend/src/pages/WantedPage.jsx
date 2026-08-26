@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationsContext';
 import {
   createWantedPost,
   deleteWantedPost,
@@ -10,6 +11,13 @@ import {
   updateWantedPost,
 } from '../lib/wantedApi';
 import {
+  deleteCardRequest,
+  listReceivedRequests,
+  listSentRequests,
+  markRequestsSeen,
+  respondToCardRequest,
+} from '../lib/cardRequestsApi';
+import {
   cardThumbnail,
   fetchCardSets,
   rarityToClass,
@@ -17,7 +25,10 @@ import {
   searchCardsByFilters,
 } from '../lib/ygoApi';
 import WantedPostCard from '../components/WantedPostCard';
+import CardRequestCard from '../components/CardRequestCard';
 import CardFilters, { EMPTY_CARD_FILTERS, hasActiveCardFilters } from '../components/CardFilters';
+
+const REQUEST_TABS = ['received-requests', 'sent-requests'];
 
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
@@ -33,13 +44,16 @@ function clampQuantity(value) {
 export default function WantedPage() {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const { unreadRequests, refreshUnreadRequests } = useNotifications();
 
   const [posts, setPosts] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [filter, setFilter] = useState('open'); // 'open' | 'all' | 'mine'
+  const [filter, setFilter] = useState('open'); // 'open' | 'all' | 'mine' | 'received-requests' | 'sent-requests'
+  const onRequestTab = REQUEST_TABS.includes(filter);
 
   // ?post=<id> arriva da un annuncio condiviso: si mostra quello, anche se nel frattempo
   // e' stato chiuso, altrimenti chi apre il link non troverebbe nulla.
@@ -63,6 +77,14 @@ export default function WantedPage() {
 
   function reload() {
     setLoading(true);
+    if (onRequestTab) {
+      const request = filter === 'received-requests' ? listReceivedRequests(user.id) : listSentRequests(user.id);
+      request
+        .then(setRequests)
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+      return;
+    }
     const opts = sharedPostId
       ? { status: 'all' }
       : filter === 'mine'
@@ -79,7 +101,44 @@ export default function WantedPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, filter, sharedPostId]);
 
+  // Aprire la scheda azzera il badge di notifica per le richieste ricevute
+  useEffect(() => {
+    if (filter !== 'received-requests') return;
+    const unseenIds = requests.filter((r) => !r.seen_by_owner).map((r) => r.id);
+    if (unseenIds.length === 0) return;
+    markRequestsSeen(unseenIds).then(refreshUnreadRequests);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, requests]);
+
   const visiblePosts = sharedPostId ? posts.filter((p) => p.id === sharedPostId) : posts;
+
+  async function handleRespondRequest(request, status) {
+    setBusy(true);
+    setError('');
+    try {
+      await respondToCardRequest(request.id, status);
+      reload();
+      refreshUnreadRequests();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteRequest(request) {
+    if (!window.confirm(`Annullare la richiesta per "${request.card_name}"?`)) return;
+    setBusy(true);
+    setError('');
+    try {
+      await deleteCardRequest(request.id);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if ((!query.trim() && !hasActiveCardFilters(filters)) || selectedCard) {
@@ -383,10 +442,46 @@ export default function WantedPage() {
           <button type="button" className={filter === 'mine' ? 'active' : ''} onClick={() => setFilter('mine')}>
             I miei
           </button>
+          <button
+            type="button"
+            className={filter === 'received-requests' ? 'active' : ''}
+            onClick={() => setFilter('received-requests')}
+          >
+            Richieste ricevute
+            {unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>}
+          </button>
+          <button
+            type="button"
+            className={filter === 'sent-requests' ? 'active' : ''}
+            onClick={() => setFilter('sent-requests')}
+          >
+            Richieste inviate
+          </button>
         </div>
       )}
 
-      {loading ? (
+      {onRequestTab ? (
+        loading ? (
+          <p className="page-message">Caricamento richieste...</p>
+        ) : requests.length === 0 ? (
+          <p className="page-message">
+            {filter === 'received-requests' ? 'Nessuna richiesta ricevuta.' : 'Nessuna richiesta inviata.'}
+          </p>
+        ) : (
+          <ul className="wanted-list">
+            {requests.map((request) => (
+              <CardRequestCard
+                key={request.id}
+                request={request}
+                mode={filter === 'received-requests' ? 'received' : 'sent'}
+                busy={busy}
+                onRespond={handleRespondRequest}
+                onDelete={handleDeleteRequest}
+              />
+            ))}
+          </ul>
+        )
+      ) : loading ? (
         <p className="page-message">Caricamento annunci...</p>
       ) : visiblePosts.length === 0 ? (
         <p className="page-message">

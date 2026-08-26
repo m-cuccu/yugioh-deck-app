@@ -40,8 +40,8 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     refreshProfile: () => {
-      if (!session?.user) return;
-      supabase
+      if (!session?.user) return Promise.resolve();
+      return supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)

@@ -9,7 +9,14 @@ import { banlistClass, banlistLabel } from '../lib/banlist';
 // Scheda con effetto e statistiche di una carta.
 // Si puo' passare `card` gia' completo (es. dai risultati di ricerca) oppure solo `cardId`,
 // nel qual caso i dati vengono recuperati al volo.
-export default function CardDetailModal({ card: initialCard, cardId, onClose, overframeImage }) {
+export default function CardDetailModal({
+  card: initialCard,
+  cardId,
+  onClose,
+  overframeImage,
+  onRequestCard,
+  requestStatus,
+}) {
   const { lang } = useLanguage();
   const { statusOf, maxCopiesForCard, format } = useBanlist();
   const [card, setCard] = useState(initialCard || null);
@@ -91,6 +98,21 @@ export default function CardDetailModal({ card: initialCard, cardId, onClose, ov
               <p className="card-detail-type">
                 {translateCardType(card.humanReadableCardType || card.type, lang)}
               </p>
+
+              {onRequestCard && (
+                <button
+                  type="button"
+                  className="btn-primary card-detail-request"
+                  disabled={requestStatus === 'sending' || requestStatus === 'pending'}
+                  onClick={onRequestCard}
+                >
+                  {requestStatus === 'pending'
+                    ? 'Richiesta inviata ✓'
+                    : requestStatus === 'sending'
+                      ? 'Invio...'
+                      : 'Richiedi carta'}
+                </button>
+              )}
 
               <p className="card-detail-price">
                 CardTrader:{' '}

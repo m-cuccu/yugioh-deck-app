@@ -10,6 +10,7 @@ import BanlistPage from './pages/BanlistPage';
 import WantedPage from './pages/WantedPage';
 import SpoilerPage from './pages/SpoilerPage';
 import SpoilerSetPage from './pages/SpoilerSetPage';
+import CollectionPage from './pages/CollectionPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ function App() {
           <Route path="/amici" element={<FriendsPage />} />
           <Route path="/spoiler" element={<SpoilerPage />} />
           <Route path="/spoiler/:setName" element={<SpoilerSetPage />} />
+          <Route path="/collezione" element={<CollectionPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

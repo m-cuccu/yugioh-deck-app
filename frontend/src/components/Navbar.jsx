@@ -8,7 +8,7 @@ import { BANLIST_FORMATS } from '../lib/banlist';
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const { lang, setLang } = useLanguage();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadRequests } = useNotifications();
   const { format, setFormat } = useBanlist();
 
   return (
@@ -22,8 +22,12 @@ export default function Navbar() {
           Suggerimenti
           {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
         </NavLink>
-        <NavLink to="/cercasi">Cercasi</NavLink>
+        <NavLink to="/cercasi">
+          Cercasi
+          {unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>}
+        </NavLink>
         <NavLink to="/spoiler">Spoiler</NavLink>
+        <NavLink to="/collezione">Collezione</NavLink>
         <NavLink to="/banlist">Banlist</NavLink>
         <NavLink to="/amici">Amici</NavLink>
       </div>

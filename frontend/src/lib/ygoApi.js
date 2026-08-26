@@ -236,6 +236,14 @@ export function fetchCardsBySet(setName, lang) {
   return fetchCardsMerged({ cardset: setName }, lang);
 }
 
+// Sfoglia le carte in ordine stabile, una pagina alla volta: usata dalla Collezione per
+// mostrare qualcosa anche senza query/filtri attivi. Non fa il merge EN+lingua locale come
+// le altre funzioni (romperebbe la semantica di offset/num su due chiamate paginate
+// indipendenti): le carte senza traduzione compaiono in inglese finche' non si usa un filtro.
+export async function browseAllCards({ lang, num = 60, offset = 0 } = {}) {
+  return fetchCardsWith({ num, offset }, lang);
+}
+
 // Scheda completa di una carta (effetto, statistiche) a partire dall'id.
 // Come per le altre chiamate si ripiega sull'altra lingua se il record non esiste.
 async function fetchCardByIdIn(cardId, lang) {

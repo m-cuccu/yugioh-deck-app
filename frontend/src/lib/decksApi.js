@@ -117,7 +117,11 @@ export async function saveDeckCards(deckId, cardsBySection) {
 export async function searchProfilesByUsername(query, excludeUserId) {
   const q = query.trim();
   if (!q) return [];
-  let request = supabase.from('profiles').select('id, username').ilike('username', `%${q}%`).limit(20);
+  let request = supabase
+    .from('profiles')
+    .select('id, username, collection_public')
+    .ilike('username', `%${q}%`)
+    .limit(20);
   if (excludeUserId) request = request.neq('id', excludeUserId);
   const { data, error } = await request;
   if (error) throw error;
@@ -128,7 +132,7 @@ export async function searchProfilesByUsername(query, excludeUserId) {
 export async function listRecentProfiles(excludeUserId, limit = 30) {
   let request = supabase
     .from('profiles')
-    .select('id, username')
+    .select('id, username, collection_public')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (excludeUserId) request = request.neq('id', excludeUserId);
