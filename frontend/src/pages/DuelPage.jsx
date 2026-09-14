@@ -83,18 +83,6 @@ export default function DuelPage() {
 
   return (
     <div className="page duel-page">
-      <div className="duel-floating-actions">
-        <Link to="/" className="lp-icon-btn" title="Indietro">
-          ←
-        </Link>
-        <button type="button" className="lp-icon-btn" onClick={() => setHistoryOpen(true)} title="Cronologia">
-          📜
-        </button>
-        <button type="button" className="lp-icon-btn" onClick={newDuel} title="Nuovo duello">
-          🔄
-        </button>
-      </div>
-
       <div className="duel-rotate-hint">
         🔄 Ruota il telefono in orizzontale per vedere i Life Points di entrambi i giocatori.
       </div>
@@ -112,22 +100,36 @@ export default function DuelPage() {
           ⚔
         </div>
 
-        <div className="duel-randomizer">
-          <div className="duel-randomizer-item">
-            <button type="button" className="btn-secondary" onClick={flipCoin} disabled={isFlippingCoin}>
-              🪙 Moneta
-            </button>
-            <span className={`duel-randomizer-result ${isFlippingCoin ? 'is-rolling' : ''}`}>
-              {coinResult || '—'}
-            </span>
+        <div className="duel-center">
+          <div className="duel-randomizer">
+            <div className="duel-randomizer-item">
+              <button type="button" className="btn-secondary" onClick={flipCoin} disabled={isFlippingCoin}>
+                🪙 Moneta
+              </button>
+              <span className={`duel-randomizer-result ${isFlippingCoin ? 'is-rolling' : ''}`}>
+                {coinResult || '—'}
+              </span>
+            </div>
+            <div className="duel-randomizer-item">
+              <button type="button" className="btn-secondary" onClick={rollDice} disabled={isRolling}>
+                🎲 Dado
+              </button>
+              <span className={`duel-randomizer-result ${isRolling ? 'is-rolling' : ''}`}>
+                {diceResult ? `${DICE_FACES[diceResult - 1]} ${diceResult}` : '—'}
+              </span>
+            </div>
           </div>
-          <div className="duel-randomizer-item">
-            <button type="button" className="btn-secondary" onClick={rollDice} disabled={isRolling}>
-              🎲 Dado
+
+          <div className="duel-center-actions">
+            <Link to="/" className="lp-icon-btn" title="Indietro">
+              ←
+            </Link>
+            <button type="button" className="lp-icon-btn" onClick={() => setHistoryOpen(true)} title="Cronologia">
+              📜
             </button>
-            <span className={`duel-randomizer-result ${isRolling ? 'is-rolling' : ''}`}>
-              {diceResult ? `${DICE_FACES[diceResult - 1]} ${diceResult}` : '—'}
-            </span>
+            <button type="button" className="lp-icon-btn" onClick={newDuel} title="Nuovo duello">
+              🔄
+            </button>
           </div>
         </div>
 

@@ -1760,23 +1760,37 @@ button {
   padding: 12px 16px;
 }
 
-.duel-floating-actions {
-  position: fixed;
-  top: 8px;
-  right: 8px;
+.duel-center {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  z-index: 20;
+  align-items: center;
+  gap: 10px;
 }
 
-.duel-floating-actions .lp-icon-btn {
-  background: var(--surface);
+.duel-center-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.duel-center-actions .lp-icon-btn {
+  width: 34px;
+  height: 34px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: transparent;
   box-shadow: var(--shadow);
   text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 16px;
+}
+
+.duel-center-actions .lp-icon-btn:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .duel-rotate-hint {
@@ -2132,13 +2146,20 @@ button {
   }
 }
 
-/* In orizzontale i pannelli si affiancano invece di restare impilati: il divisore orizzontale
-   non ha piu' senso tra due colonne, quindi si nasconde. */
+/* In orizzontale i pannelli si affiancano invece di restare impilati e diventano i protagonisti
+   dello schermo: la riga dei pannelli prende tutto lo spazio verticale residuo (1fr), la riga
+   centrale (moneta/dado + azioni) resta larga solo quanto il suo contenuto. Il divisore
+   orizzontale non ha piu' senso tra due colonne, quindi si nasconde. Le dimensioni interne dei
+   pannelli sono fluide (flex/clamp legati a vh) invece di valori fissi per un solo dispositivo,
+   cosi' si adattano da sole a qualunque altezza disponibile senza bisogno di altri breakpoint. */
 @media (orientation: landscape) {
   .duel-board {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr auto;
     grid-template-areas: 'p2 p1' 'rand rand';
+    padding: 8px 12px;
+    gap: 8px;
   }
 
   .lp-counter.is-rotated {
@@ -2149,69 +2170,22 @@ button {
     grid-area: p1;
   }
 
-  .duel-randomizer {
+  .duel-center {
     grid-area: rand;
   }
 
   .duel-divider {
     display: none;
   }
-}
-
-/* Telefono appoggiato in orizzontale: poca altezza disponibile (~350-400px su Android recenti).
-   Si comprime tutto al minimo perche' l'intero tabellone stia in un solo schermo, mai a scorrere:
-   niente e' superfluo quanto lo scroll qui, quindi si sacrifica lo stile per lo spazio. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .duel-board {
-    padding: 6px 8px;
-    gap: 6px;
-  }
-
-  .duel-randomizer {
-    padding: 4px 10px;
-    gap: 14px;
-  }
-
-  .duel-randomizer .btn-secondary {
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-
-  .duel-randomizer-result {
-    font-size: 14px;
-    padding: 2px 6px;
-  }
 
   .lp-counter {
-    padding: 6px;
-    gap: 4px;
-  }
-
-  .lp-counter-head-actions {
-    gap: 4px;
-  }
-
-  .lp-icon-btn {
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
-  }
-
-  .lp-counter-label {
-    font-size: 12px;
+    height: 100%;
+    padding: clamp(6px, 2vh, 18px);
+    gap: clamp(4px, 1.2vh, 10px);
   }
 
   .lp-display {
-    font-size: 24px;
-    text-shadow: none;
-  }
-
-  .lp-staged-row {
-    min-height: 0;
-  }
-
-  .lp-staged {
-    font-size: 13px;
+    font-size: clamp(28px, 9vh, 72px);
   }
 
   .lp-quick-preview {
@@ -2219,22 +2193,26 @@ button {
   }
 
   .lp-keypad {
-    gap: 3px;
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: repeat(4, 1fr);
   }
 
   .lp-keypad button {
-    padding: 3px;
-    font-size: 11px;
-    border-radius: 6px;
-  }
-
-  .lp-controls {
-    gap: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(12px, 3vh, 18px);
   }
 
   .lp-sign-btn {
-    padding: 4px;
-    font-size: 14px;
+    font-size: clamp(14px, 3.5vh, 22px);
+    padding: clamp(4px, 1.5vh, 12px);
+  }
+
+  .duel-randomizer {
+    padding: clamp(4px, 1vh, 12px) 14px;
+    gap: 16px;
   }
 }
 
