@@ -1760,8 +1760,23 @@ button {
   padding: 12px 16px;
 }
 
-.duel-back-link {
-  padding: 4px;
+.duel-floating-actions {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+}
+
+.duel-floating-actions .lp-icon-btn {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .duel-rotate-hint {
@@ -2143,25 +2158,83 @@ button {
   }
 }
 
-/* Telefono appoggiato in orizzontale: poca altezza disponibile, si comprime il pannello perche'
-   stia tutto a schermo senza dover scorrere. */
+/* Telefono appoggiato in orizzontale: poca altezza disponibile (~350-400px su Android recenti).
+   Si comprime tutto al minimo perche' l'intero tabellone stia in un solo schermo, mai a scorrere:
+   niente e' superfluo quanto lo scroll qui, quindi si sacrifica lo stile per lo spazio. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .lp-counter {
-    padding: 10px;
+  .duel-board {
+    padding: 6px 8px;
     gap: 6px;
   }
 
+  .duel-randomizer {
+    padding: 4px 10px;
+    gap: 14px;
+  }
+
+  .duel-randomizer .btn-secondary {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .duel-randomizer-result {
+    font-size: 14px;
+    padding: 2px 6px;
+  }
+
+  .lp-counter {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .lp-counter-head-actions {
+    gap: 4px;
+  }
+
+  .lp-icon-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .lp-counter-label {
+    font-size: 12px;
+  }
+
   .lp-display {
-    font-size: 34px;
+    font-size: 24px;
+    text-shadow: none;
+  }
+
+  .lp-staged-row {
+    min-height: 0;
+  }
+
+  .lp-staged {
+    font-size: 13px;
+  }
+
+  .lp-quick-preview {
+    display: none;
+  }
+
+  .lp-keypad {
+    gap: 3px;
   }
 
   .lp-keypad button {
-    padding: 6px;
-    font-size: 14px;
+    padding: 3px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .lp-controls {
+    gap: 4px;
   }
 
   .lp-sign-btn {
-    padding: 6px;
+    padding: 4px;
+    font-size: 14px;
   }
 }
 

@@ -83,19 +83,16 @@ export default function DuelPage() {
 
   return (
     <div className="page duel-page">
-      <div className="page-header">
-        <Link to="/" className="btn-link duel-back-link">
-          ← Indietro
+      <div className="duel-floating-actions">
+        <Link to="/" className="lp-icon-btn" title="Indietro">
+          ←
         </Link>
-        <h2>Duello</h2>
-        <div className="page-actions">
-          <button type="button" className="btn-secondary" onClick={() => setHistoryOpen(true)}>
-            📜 Cronologia
-          </button>
-          <button type="button" className="btn-secondary" onClick={newDuel}>
-            Nuovo duello
-          </button>
-        </div>
+        <button type="button" className="lp-icon-btn" onClick={() => setHistoryOpen(true)} title="Cronologia">
+          📜
+        </button>
+        <button type="button" className="lp-icon-btn" onClick={newDuel} title="Nuovo duello">
+          🔄
+        </button>
       </div>
 
       <div className="duel-rotate-hint">
