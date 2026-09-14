@@ -12,7 +12,15 @@ const FLASH_DURATION_MS = 500;
 // moltiplicate per 100 nella direzione scelta (es. 5 poi - -> -500, 25 poi + -> +2500).
 // Il tasto 000 serve per i valori gia' esatti (es. 3 poi 000 -> 3000): in quel caso la
 // conferma applica il numero cosi' com'e', senza moltiplicarlo di nuovo per 100.
-export default function LifePointCounter({ label, rotated = false, storageKey, onApply }) {
+export default function LifePointCounter({
+  label,
+  rotated = false,
+  storageKey,
+  onApply,
+  onBack,
+  onHistory,
+  onNewDuel,
+}) {
   const [lp, setLp] = useState(STARTING_LP);
   const [staged, setStaged] = useState('');
   const [exact, setExact] = useState(false);
@@ -94,6 +102,25 @@ export default function LifePointCounter({ label, rotated = false, storageKey, o
             title="Annulla ultima modifica"
           >
             ↩
+          </button>
+          <button type="button" className="lp-icon-btn lp-icon-btn-accent" onClick={onBack} title="Indietro">
+            ←
+          </button>
+          <button
+            type="button"
+            className="lp-icon-btn lp-icon-btn-accent"
+            onClick={onHistory}
+            title="Cronologia del duello"
+          >
+            📜
+          </button>
+          <button
+            type="button"
+            className="lp-icon-btn lp-icon-btn-accent"
+            onClick={onNewDuel}
+            title="Nuovo duello"
+          >
+            🔄
           </button>
         </div>
       </div>

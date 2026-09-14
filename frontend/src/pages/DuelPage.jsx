@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import LifePointCounter from '../components/LifePointCounter';
 
 const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -7,6 +7,7 @@ const ROLL_DURATION_MS = 700;
 const ROLL_TICK_MS = 80;
 
 export default function DuelPage() {
+  const navigate = useNavigate();
   const [coinResult, setCoinResult] = useState(null);
   const [diceResult, setDiceResult] = useState(null);
   const [isFlippingCoin, setIsFlippingCoin] = useState(false);
@@ -94,42 +95,31 @@ export default function DuelPage() {
           rotated
           storageKey="duel-bg-p2"
           onApply={(entry) => addLogEntry('Giocatore 2', entry)}
+          onBack={() => navigate('/')}
+          onHistory={() => setHistoryOpen(true)}
+          onNewDuel={newDuel}
         />
 
         <div className="duel-divider" aria-hidden="true">
           ⚔
         </div>
 
-        <div className="duel-center">
-          <div className="duel-randomizer">
-            <div className="duel-randomizer-item">
-              <button type="button" className="btn-secondary" onClick={flipCoin} disabled={isFlippingCoin}>
-                🪙 Moneta
-              </button>
-              <span className={`duel-randomizer-result ${isFlippingCoin ? 'is-rolling' : ''}`}>
-                {coinResult || '—'}
-              </span>
-            </div>
-            <div className="duel-randomizer-item">
-              <button type="button" className="btn-secondary" onClick={rollDice} disabled={isRolling}>
-                🎲 Dado
-              </button>
-              <span className={`duel-randomizer-result ${isRolling ? 'is-rolling' : ''}`}>
-                {diceResult ? `${DICE_FACES[diceResult - 1]} ${diceResult}` : '—'}
-              </span>
-            </div>
+        <div className="duel-randomizer">
+          <div className="duel-randomizer-item">
+            <button type="button" className="btn-secondary" onClick={flipCoin} disabled={isFlippingCoin}>
+              🪙 Moneta
+            </button>
+            <span className={`duel-randomizer-result ${isFlippingCoin ? 'is-rolling' : ''}`}>
+              {coinResult || '—'}
+            </span>
           </div>
-
-          <div className="duel-center-actions">
-            <Link to="/" className="lp-icon-btn" title="Indietro">
-              ←
-            </Link>
-            <button type="button" className="lp-icon-btn" onClick={() => setHistoryOpen(true)} title="Cronologia">
-              📜
+          <div className="duel-randomizer-item">
+            <button type="button" className="btn-secondary" onClick={rollDice} disabled={isRolling}>
+              🎲 Dado
             </button>
-            <button type="button" className="lp-icon-btn" onClick={newDuel} title="Nuovo duello">
-              🔄
-            </button>
+            <span className={`duel-randomizer-result ${isRolling ? 'is-rolling' : ''}`}>
+              {diceResult ? `${DICE_FACES[diceResult - 1]} ${diceResult}` : '—'}
+            </span>
           </div>
         </div>
 
@@ -138,6 +128,9 @@ export default function DuelPage() {
           label="Giocatore 1"
           storageKey="duel-bg-p1"
           onApply={(entry) => addLogEntry('Giocatore 1', entry)}
+          onBack={() => navigate('/')}
+          onHistory={() => setHistoryOpen(true)}
+          onNewDuel={newDuel}
         />
       </div>
 
