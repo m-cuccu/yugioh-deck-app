@@ -1760,29 +1760,17 @@ button {
   padding: 12px 16px;
 }
 
-.duel-rotate-hint {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 8px;
-  padding: 32px 20px;
-  margin-top: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  color: var(--text-muted);
-  font-size: 15px;
-}
-
+/* Layout garantito per costruzione (come le app dedicate, es. Yu-Gi-Oh! Neuron): i due pannelli
+   si dividono SEMPRE esattamente a meta' l'altezza disponibile (flex:1 1 0 su entrambi, vedi
+   .lp-counter), non "quanto basta al loro contenuto" - cosi' la somma fa sempre 100% dello
+   schermo per matematica, non per stima, in qualunque orientamento, senza dover ruotare nulla. */
 .duel-board {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  gap: 14px;
-  padding: 20px 12px;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: 20px;
   background:
     radial-gradient(ellipse at 50% 0%, var(--accent-bg), transparent 60%),
@@ -1852,16 +1840,24 @@ button {
 
 .lp-counter {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   isolation: isolate;
   background: linear-gradient(135deg, var(--surface), var(--accent-bg));
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 18px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  /* Garanzia strutturale: entrambi i pannelli si dividono sempre esattamente a meta' lo spazio
+     verticale di .duel-board (flex:1 1 0 identico su entrambi), per costruzione matematica -
+     non "quanto basta al contenuto". overflow-y:auto sopra e' solo una rete di sicurezza
+     *interna a questo singolo pannello* per l'eventualita' che il suo contenuto non ci stia
+     comunque su uno schermo particolarmente piccolo: scorrerebbe solo lui, mai l'intera pagina. */
+  flex: 1 1 0;
+  min-height: 0;
+  padding: clamp(8px, 2.5vh, 18px);
+  gap: clamp(4px, 1.2vh, 10px);
 }
 
 .lp-bg-art {
@@ -1969,7 +1965,7 @@ button {
 }
 
 .lp-display {
-  font-size: 56px;
+  font-size: clamp(28px, 9vh, 72px);
   font-weight: 800;
   text-align: center;
   color: var(--text-h);
@@ -2001,11 +1997,12 @@ button {
   align-items: baseline;
   justify-content: center;
   gap: 10px;
-  min-height: 24px;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 
 .lp-staged {
-  font-size: 20px;
+  font-size: clamp(14px, 3vh, 20px);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -2018,16 +2015,22 @@ button {
 .lp-keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-rows: repeat(4, 1fr);
+  flex: 1;
+  min-height: 0;
+  gap: clamp(3px, 1vh, 6px);
 }
 
 .lp-keypad button {
-  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface), var(--bg));
   color: var(--text-h);
-  font-size: 16px;
+  font-size: clamp(12px, 3vh, 18px);
   font-weight: 600;
   box-shadow: 0 1px 0 var(--border);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
@@ -2054,14 +2057,18 @@ button {
 .lp-controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  flex: 0 0 auto;
   gap: 10px;
 }
 
 .lp-sign-btn {
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(4px, 1.5vh, 12px);
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 22px;
+  font-size: clamp(14px, 3.5vh, 22px);
   font-weight: 700;
   color: var(--accent-contrast);
   transition: transform 0.08s ease;
@@ -2133,88 +2140,6 @@ button {
 .duel-log-total {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-}
-
-/* Su telefono in verticale i due pannelli impilati superano l'altezza dello schermo e se ne
-   vede solo uno: si mostra un avviso a ruotare invece del tabellone tagliato a meta'. */
-@media (orientation: portrait) and (max-width: 700px) {
-  .duel-board {
-    display: none;
-  }
-
-  .duel-rotate-hint {
-    display: flex;
-  }
-}
-
-/* In orizzontale i pannelli si affiancano invece di restare impilati e diventano i protagonisti
-   dello schermo: la riga dei pannelli prende tutto lo spazio verticale residuo (1fr), la riga
-   centrale (moneta/dado + azioni) resta larga solo quanto il suo contenuto. Il divisore
-   orizzontale non ha piu' senso tra due colonne, quindi si nasconde. Le dimensioni interne dei
-   pannelli sono fluide (flex/clamp legati a vh) invece di valori fissi per un solo dispositivo,
-   cosi' si adattano da sole a qualunque altezza disponibile senza bisogno di altri breakpoint. */
-@media (orientation: landscape) {
-  .duel-board {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr auto;
-    grid-template-areas: 'p2 p1' 'rand rand';
-    padding: 8px 12px;
-    gap: 8px;
-  }
-
-  .lp-counter.is-rotated {
-    grid-area: p2;
-  }
-
-  .lp-counter:not(.is-rotated) {
-    grid-area: p1;
-  }
-
-  .duel-randomizer {
-    grid-area: rand;
-  }
-
-  .duel-divider {
-    display: none;
-  }
-
-  .lp-counter {
-    height: 100%;
-    padding: clamp(6px, 2vh, 18px);
-    gap: clamp(4px, 1.2vh, 10px);
-  }
-
-  .lp-display {
-    font-size: clamp(28px, 9vh, 72px);
-  }
-
-  .lp-quick-preview {
-    display: none;
-  }
-
-  .lp-keypad {
-    flex: 1;
-    min-height: 0;
-    grid-template-rows: repeat(4, 1fr);
-  }
-
-  .lp-keypad button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(12px, 3vh, 18px);
-  }
-
-  .lp-sign-btn {
-    font-size: clamp(14px, 3.5vh, 22px);
-    padding: clamp(4px, 1.5vh, 12px);
-  }
-
-  .duel-randomizer {
-    padding: clamp(4px, 1vh, 12px) 14px;
-    gap: 16px;
-  }
 }
 
 .suggestion-kind {
