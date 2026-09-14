@@ -148,6 +148,17 @@ button {
   padding: 16px;
 }
 
+/* Pagine "a schermo intero" (es. Duello): niente navbar sopra, il contenuto riempie l'intero
+   viewport e non scorre - e' la pagina stessa a gestire lo spazio residuo internamente. */
+.app-main.app-main-fullscreen {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+}
+
 /* --- Buttons --- */
 
 .btn-primary, .btn-secondary, .btn-danger, .btn-link {
@@ -1740,6 +1751,19 @@ button {
 
 /* --- Duello --- */
 
+.duel-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.duel-back-link {
+  padding: 4px;
+}
+
 .duel-rotate-hint {
   display: none;
   align-items: center;
@@ -1758,6 +1782,9 @@ button {
 .duel-board {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   gap: 14px;
   padding: 20px 12px;
   border-radius: 20px;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import LifePointCounter from '../components/LifePointCounter';
 
 const DICE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -81,8 +82,11 @@ export default function DuelPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page duel-page">
       <div className="page-header">
+        <Link to="/" className="btn-link duel-back-link">
+          ← Indietro
+        </Link>
         <h2>Duello</h2>
         <div className="page-actions">
           <button type="button" className="btn-secondary" onClick={() => setHistoryOpen(true)}>

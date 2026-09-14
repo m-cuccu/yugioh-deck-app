@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
@@ -16,6 +16,8 @@ import DuelPage from './pages/DuelPage';
 
 function App() {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isFullscreenPage = location.pathname === '/duello';
 
   if (loading) return <p className="page-message">Caricamento...</p>;
 
@@ -23,8 +25,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Navbar />
-      <main className="app-main">
+      {!isFullscreenPage && <Navbar />}
+      <main className={`app-main ${isFullscreenPage ? 'app-main-fullscreen' : ''}`}>
         <Routes>
           <Route path="/" element={<DeckListPage />} />
           <Route path="/deck/:deckId" element={<DeckEditorPage />} />
