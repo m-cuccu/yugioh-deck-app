@@ -1799,8 +1799,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 12px;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 6px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1808,19 +1809,24 @@ button {
   flex-wrap: wrap;
 }
 
+.duel-randomizer .btn-secondary {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
 .duel-randomizer-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .duel-randomizer-result {
   font-weight: 700;
-  font-size: 20px;
+  font-size: 13px;
   color: var(--text-h);
-  min-width: 48px;
+  min-width: 36px;
   text-align: center;
-  padding: 4px 10px;
+  padding: 2px 6px;
   border-radius: 999px;
   background: var(--bg);
 }
@@ -1856,8 +1862,8 @@ button {
      comunque su uno schermo particolarmente piccolo: scorrerebbe solo lui, mai l'intera pagina. */
   flex: 1 1 0;
   min-height: 0;
-  padding: clamp(8px, 2.5vh, 18px);
-  gap: clamp(4px, 1.2vh, 10px);
+  padding: 6px;
+  gap: 4px;
 }
 
 .lp-bg-art {
@@ -1965,7 +1971,7 @@ button {
 }
 
 .lp-display {
-  font-size: clamp(28px, 9vh, 72px);
+  font-size: 26px;
   font-weight: 800;
   text-align: center;
   color: var(--text-h);
@@ -2002,7 +2008,7 @@ button {
 }
 
 .lp-staged {
-  font-size: clamp(14px, 3vh, 20px);
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -2018,7 +2024,7 @@ button {
   grid-template-rows: repeat(4, 1fr);
   flex: 1;
   min-height: 0;
-  gap: clamp(3px, 1vh, 6px);
+  gap: 4px;
 }
 
 .lp-keypad button {
@@ -2030,7 +2036,7 @@ button {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface), var(--bg));
   color: var(--text-h);
-  font-size: clamp(12px, 3vh, 18px);
+  font-size: 12px;
   font-weight: 600;
   box-shadow: 0 1px 0 var(--border);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
@@ -2065,10 +2071,10 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(4px, 1.5vh, 12px);
+  padding: 5px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: clamp(14px, 3.5vh, 22px);
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-contrast);
   transition: transform 0.08s ease;
