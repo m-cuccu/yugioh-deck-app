@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchCardDetails, fetchEnglishCardName } from '../lib/ygoApi';
+import { communityDeckSearchUrl, fetchCardDetails, fetchEnglishCardName } from '../lib/ygoApi';
 import { fetchCardTraderPrice } from '../lib/cardtraderApi';
 import { translateAttribute, translateCardType, translateRace } from '../lib/cardI18n';
 import { useBanlist } from '../context/BanlistContext';
@@ -198,7 +198,17 @@ export default function CardDetailModal({
               )}
 
               {card.archetype && (
-                <p className="card-detail-archetype">Archetipo: {card.archetype}</p>
+                <p className="card-detail-archetype">
+                  Archetipo: {card.archetype}{' '}
+                  <a
+                    href={communityDeckSearchUrl(card.archetype)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-link"
+                  >
+                    Liste community ↗
+                  </a>
+                </p>
               )}
 
               <p className="card-detail-desc">{card.desc}</p>

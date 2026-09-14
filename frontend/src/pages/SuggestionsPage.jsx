@@ -14,10 +14,23 @@ import {
 import { applySuggestionToCards } from '../lib/suggestions';
 import { useBanlist } from '../context/BanlistContext';
 import SuggestionCard from '../components/SuggestionCard';
+import SectionTabs from '../components/SectionTabs';
+
+function deckSectionTabs(unreadCount) {
+  return [
+    { to: '/', label: 'I miei deck' },
+    { to: '/liste-community', label: 'Liste Community' },
+    {
+      to: '/suggerimenti',
+      label: 'Suggerimenti',
+      badge: unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>,
+    },
+  ];
+}
 
 export default function SuggestionsPage() {
   const { user } = useAuth();
-  const { refreshUnread } = useNotifications();
+  const { unreadCount, refreshUnread } = useNotifications();
   const { maxCopiesForCard } = useBanlist();
 
   const [tab, setTab] = useState('received'); // 'received' | 'sent'
@@ -98,6 +111,7 @@ export default function SuggestionsPage() {
 
   return (
     <div className="page">
+      <SectionTabs tabs={deckSectionTabs(unreadCount)} />
       <h2>Suggerimenti</h2>
 
       <div className="suggest-kind-tabs">

@@ -8,7 +8,7 @@ import { BANLIST_FORMATS } from '../lib/banlist';
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const { lang, setLang } = useLanguage();
-  const { unreadCount, unreadRequests } = useNotifications();
+  const { unreadCount: unreadSuggestions, unreadRequests } = useNotifications();
   const { format, setFormat } = useBanlist();
 
   return (
@@ -17,18 +17,15 @@ export default function Navbar() {
       <div className="navbar-links">
         <NavLink to="/" end>
           I miei deck
-        </NavLink>
-        <NavLink to="/suggerimenti">
-          Suggerimenti
-          {unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
-        </NavLink>
-        <NavLink to="/cercasi">
-          Cercasi
-          {unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>}
+          {unreadSuggestions > 0 && <span className="nav-badge">{unreadSuggestions}</span>}
         </NavLink>
         <NavLink to="/spoiler">Spoiler</NavLink>
-        <NavLink to="/collezione">Collezione</NavLink>
+        <NavLink to="/collezione">
+          Collezione
+          {unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>}
+        </NavLink>
         <NavLink to="/banlist">Banlist</NavLink>
+        <NavLink to="/duello">Duello</NavLink>
         <NavLink to="/amici">Amici</NavLink>
       </div>
       <div className="navbar-user">

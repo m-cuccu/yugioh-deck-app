@@ -1734,6 +1734,335 @@ button {
   font-weight: 600;
 }
 
+.section-tabs {
+  margin-bottom: 16px;
+}
+
+/* --- Duello --- */
+
+.duel-board {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 12px;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--accent-bg), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, var(--accent-bg), transparent 60%);
+}
+
+.duel-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.duel-divider::before,
+.duel-divider::after {
+  content: '';
+  flex: 1;
+  max-width: 120px;
+  height: 1px;
+  background: var(--border);
+}
+
+.duel-randomizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+
+.duel-randomizer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.duel-randomizer-result {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text-h);
+  min-width: 48px;
+  text-align: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.duel-randomizer-result.is-rolling {
+  display: inline-block;
+  animation: dice-roll 0.3s linear infinite;
+  color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+@keyframes dice-roll {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.lp-counter {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, var(--surface), var(--accent-bg));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-bg-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.16;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.lp-counter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.lp-counter.is-rotated {
+  transform: rotate(180deg);
+}
+
+.lp-counter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-counter-label {
+  font-weight: 700;
+  color: var(--text-h);
+  letter-spacing: 0.02em;
+}
+
+.lp-counter-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lp-icon-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.1s ease;
+}
+
+.lp-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.lp-icon-btn:not(:disabled):hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.lp-icon-btn:not(:disabled):active {
+  transform: scale(0.9);
+}
+
+.lp-display {
+  font-size: 56px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px var(--accent-bg);
+  transition: color 0.15s ease;
+}
+
+.lp-flash-down {
+  animation: lp-flash-down 0.5s ease;
+}
+
+.lp-flash-up {
+  animation: lp-flash-up 0.5s ease;
+}
+
+@keyframes lp-flash-down {
+  0%, 100% { color: var(--text-h); }
+  25% { color: var(--danger); }
+}
+
+@keyframes lp-flash-up {
+  0%, 100% { color: var(--text-h); }
+  25% { color: var(--ok); }
+}
+
+.lp-staged-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.lp-staged {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.lp-quick-preview {
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.lp-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.lp-keypad button {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), var(--bg));
+  color: var(--text-h);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 var(--border);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.lp-keypad button:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+.lp-keypad button:not(:disabled):active {
+  transform: scale(0.95) translateY(1px);
+  box-shadow: none;
+}
+
+.lp-keypad button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lp-keypad .lp-key-clear {
+  color: var(--danger);
+}
+
+.lp-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lp-sign-btn {
+  padding: 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-contrast);
+  transition: transform 0.08s ease;
+}
+
+.lp-sign-btn:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+.lp-sign-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.lp-sign-minus {
+  background: var(--danger);
+}
+
+.lp-sign-plus {
+  background: var(--ok);
+}
+
+.duel-bg-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.duel-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.duel-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.duel-log-player {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.duel-log-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.duel-log-amount.is-up {
+  color: var(--ok);
+}
+
+.duel-log-amount.is-down {
+  color: var(--danger);
+}
+
+.duel-log-total {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .suggestion-kind {
   display: inline-block;
   font-size: 11px;

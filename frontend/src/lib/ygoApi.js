@@ -194,10 +194,71 @@ export async function fetchRelatedCards(cardName, lang) {
   return cards.filter((c) => c.id !== card.id);
 }
 
+// Come fetchRelatedCards, ma partendo direttamente dal nome dell'archetipo invece che da una
+// carta che lo rappresenta (serve per far scegliere all'utente una carta di un archetipo senza
+// gia' conoscerne una, es. per lo sfondo dei pannelli Life Points in Duello).
+export async function fetchCardsByArchetype(archetypeName, lang) {
+  const fetchIn = async (l) => {
+    const res = await fetch(
+      `${BASE_URL}?archetype=${encodeURIComponent(archetypeName)}&num=50&offset=0${langParam(l)}`
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  };
+
+  if (!lang || lang === 'en') return fetchIn('en');
+
+  const [localized, english] = await Promise.all([fetchIn(lang), fetchIn('en')]);
+  const byId = new Map();
+  for (const c of english) byId.set(c.id, c);
+  for (const c of localized) byId.set(c.id, c);
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Art "cropped" (solo illustrazione, senza cornice/testo): resa molto migliore di card_image
+// intera quando usata come sfondo decorativo (es. dietro il contatore Life Points in Duello).
+export function cardArtwork(card) {
+  return card.card_images?.[0]?.image_url_cropped || card.card_images?.[0]?.image_url || '';
+}
+
 // Elenco delle edizioni (set + rarita') in cui una carta e' stata stampata.
 export async function fetchCardSets(cardName, lang) {
   const card = await fetchCardByName(cardName, lang);
   return card?.card_sets || [];
+}
+
+const ARCHETYPES_URL = 'https://db.ygoprodeck.com/api/v7/archetypes.php';
+
+// Cache in memoria: l'elenco degli archetipi cambia raramente, non serve rifetchare
+// ad ogni apertura della pagina di ricerca.
+let archetypeNamesCache = null;
+
+// Elenco di tutti i nomi di archetipo conosciuti da YGOPRODeck, usato per i suggerimenti
+// nella ricerca "Liste Community".
+export async function fetchArchetypeNames() {
+  if (archetypeNamesCache) return archetypeNamesCache;
+  const res = await fetch(ARCHETYPES_URL);
+  if (!res.ok) throw new Error('Impossibile contattare il servizio archetipi');
+  const json = await res.json();
+  archetypeNamesCache = json.map((a) => a.archetype_name).sort((a, b) => a.localeCompare(b));
+  return archetypeNamesCache;
+}
+
+// Caratteri che `encodeURIComponent` lascia invariati ma che YGOPRODeck percent-codifica
+// comunque nei propri URL (es. "Gravekeeper's" -> "gravekeeper%27s").
+function strictEncodeURIComponent(str) {
+  return encodeURIComponent(str).replace(
+    /[!'()*]/g,
+    (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase()
+  );
+}
+
+// Link alla pagina pubblica di YGOPRODeck con le decklist della community per un archetipo
+// (es. "Blue-Eyes" -> https://ygoprodeck.com/category/type/blue-eyes). Se l'archetipo non ha
+// ancora liste caricate, la pagina mostrera' semplicemente un "Not Found" lato YGOPRODeck.
+export function communityDeckSearchUrl(archetypeName) {
+  return `https://ygoprodeck.com/category/type/${strictEncodeURIComponent(archetypeName.toLowerCase())}`;
 }
 
 const SETS_URL = 'https://db.ygoprodeck.com/api/v7/cardsets.php';

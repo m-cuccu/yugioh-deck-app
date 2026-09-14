@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationsContext';
 import { listOwnedCardIds, setCardOwned, setCollectionVisibility } from '../lib/collectionApi';
 import { browseAllCards, cardThumbnail, resolveCardFilters, searchCardsByFilters } from '../lib/ygoApi';
 import CardFilters, { EMPTY_CARD_FILTERS, hasActiveCardFilters } from '../components/CardFilters';
 import CardDetailModal from '../components/CardDetailModal';
+import SectionTabs from '../components/SectionTabs';
 
 const PAGE_SIZE = 60;
 
 export default function CollectionPage() {
   const { user, profile, refreshProfile } = useAuth();
   const { lang } = useLanguage();
+  const { unreadRequests } = useNotifications();
 
   const [ownedIds, setOwnedIds] = useState(new Set());
   const [error, setError] = useState('');
@@ -103,6 +106,16 @@ export default function CollectionPage() {
 
   return (
     <div className="page">
+      <SectionTabs
+        tabs={[
+          { to: '/collezione', label: 'Collezione' },
+          {
+            to: '/cercasi',
+            label: 'Cercasi',
+            badge: unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>,
+          },
+        ]}
+      />
       <div className="page-header">
         <h2>Collezione</h2>
       </div>

@@ -11,6 +11,8 @@ import WantedPage from './pages/WantedPage';
 import SpoilerPage from './pages/SpoilerPage';
 import SpoilerSetPage from './pages/SpoilerSetPage';
 import CollectionPage from './pages/CollectionPage';
+import CommunityDecksPage from './pages/CommunityDecksPage';
+import DuelPage from './pages/DuelPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -33,6 +35,8 @@ function App() {
           <Route path="/spoiler" element={<SpoilerPage />} />
           <Route path="/spoiler/:setName" element={<SpoilerSetPage />} />
           <Route path="/collezione" element={<CollectionPage />} />
+          <Route path="/liste-community" element={<CommunityDecksPage />} />
+          <Route path="/duello" element={<DuelPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -13,10 +13,25 @@ import {
   setDeckVisibility,
 } from '../lib/decksApi';
 import { exportDeckAsJson, exportDeckAsYdk, parseJsonDeckFile, parseYdkFile } from '../lib/deckIO';
+import { useNotifications } from '../context/NotificationsContext';
+import SectionTabs from '../components/SectionTabs';
+
+function deckSectionTabs(unreadCount) {
+  return [
+    { to: '/', label: 'I miei deck' },
+    { to: '/liste-community', label: 'Liste Community' },
+    {
+      to: '/suggerimenti',
+      label: 'Suggerimenti',
+      badge: unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>,
+    },
+  ];
+}
 
 export default function DeckListPage() {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const { unreadCount } = useNotifications();
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -125,6 +140,7 @@ export default function DeckListPage() {
 
   return (
     <div className="page">
+      <SectionTabs tabs={deckSectionTabs(unreadCount)} />
       <div className="page-header">
         <h2>I miei deck</h2>
         <div className="page-actions">

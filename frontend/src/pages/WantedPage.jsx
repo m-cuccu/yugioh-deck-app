@@ -17,6 +17,7 @@ import {
   markRequestsSeen,
   respondToCardRequest,
 } from '../lib/cardRequestsApi';
+import SectionTabs from '../components/SectionTabs';
 import {
   cardThumbnail,
   fetchCardSets,
@@ -272,6 +273,16 @@ export default function WantedPage() {
 
   return (
     <div className="page">
+      <SectionTabs
+        tabs={[
+          { to: '/collezione', label: 'Collezione' },
+          {
+            to: '/cercasi',
+            label: 'Cercasi',
+            badge: unreadRequests > 0 && <span className="nav-badge">{unreadRequests}</span>,
+          },
+        ]}
+      />
       <div className="page-header">
         <h2>AAA Cercasi</h2>
         <div className="page-actions">
