@@ -1740,6 +1740,21 @@ button {
 
 /* --- Duello --- */
 
+.duel-rotate-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 32px 20px;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
 .duel-board {
   display: flex;
   flex-direction: column;
@@ -2061,6 +2076,66 @@ button {
 .duel-log-total {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Su telefono in verticale i due pannelli impilati superano l'altezza dello schermo e se ne
+   vede solo uno: si mostra un avviso a ruotare invece del tabellone tagliato a meta'. */
+@media (orientation: portrait) and (max-width: 700px) {
+  .duel-board {
+    display: none;
+  }
+
+  .duel-rotate-hint {
+    display: flex;
+  }
+}
+
+/* In orizzontale i pannelli si affiancano invece di restare impilati: il divisore orizzontale
+   non ha piu' senso tra due colonne, quindi si nasconde. */
+@media (orientation: landscape) {
+  .duel-board {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 'p2 p1' 'rand rand';
+  }
+
+  .lp-counter.is-rotated {
+    grid-area: p2;
+  }
+
+  .lp-counter:not(.is-rotated) {
+    grid-area: p1;
+  }
+
+  .duel-randomizer {
+    grid-area: rand;
+  }
+
+  .duel-divider {
+    display: none;
+  }
+}
+
+/* Telefono appoggiato in orizzontale: poca altezza disponibile, si comprime il pannello perche'
+   stia tutto a schermo senza dover scorrere. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .lp-counter {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .lp-display {
+    font-size: 34px;
+  }
+
+  .lp-keypad button {
+    padding: 6px;
+    font-size: 14px;
+  }
+
+  .lp-sign-btn {
+    padding: 6px;
+  }
 }
 
 .suggestion-kind {

@@ -94,6 +94,10 @@ export default function DuelPage() {
         </div>
       </div>
 
+      <div className="duel-rotate-hint">
+        🔄 Ruota il telefono in orizzontale per vedere i Life Points di entrambi i giocatori.
+      </div>
+
       <div className="duel-board">
         <LifePointCounter
           key={`p2-${resetKey}`}
